@@ -14,8 +14,9 @@ import BestDayToPost from '@/components/BestDayToPost';
 import ContentBreakdown from '@/components/ContentBreakdown';
 import KeyInsights from '@/components/KeyInsights';
 import EmptyState from '@/components/EmptyState';
-import { Channel, Video, Timeframe } from '@/types';
+import { Channel, Video, Timeframe, Insight } from '@/types';
 import { analyzeChannel, fetchTableVideosForTab, getErrorMessage } from '@/lib/youtube';
+import { generateInsights } from '@/lib/insights';
 import { formatDate } from '@/lib/utils';
 
 // Map FilterBar's FilterOption → our Timeframe type
@@ -50,6 +51,7 @@ function DashboardContent() {
   const [tableVideos, setTableVideos] = useState<Video[]>([]);
   const [recentVideos, setRecentVideos] = useState<Video[]>([]);
   const [extendedVideos, setExtendedVideos] = useState<Video[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(false);
   const [tabLoading, setTabLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +86,7 @@ function DashboardContent() {
       setTableVideos(result.tableVideos);
       setRecentVideos(result.recentVideos);
       setExtendedVideos(result.extendedVideos);
+      setInsights(generateInsights(result));
       setSort('views');
       setFilter('all');
       setIsDemoMode(isDemo);
@@ -97,6 +100,7 @@ function DashboardContent() {
       setTableVideos([]);
       setRecentVideos([]);
       setExtendedVideos([]);
+      setInsights([]);
       if (msg === 'INVALID_URL') {
         setInputError('Please enter a valid YouTube channel URL');
       } else if (msg === 'CHANNEL_NOT_FOUND') {
@@ -272,7 +276,7 @@ function DashboardContent() {
                 </div>
 
                 {/* Key Insights skeleton */}
-                <div className="h-20 bg-[#0A0A0A] rounded-xl border border-white/10 animate-pulse" />
+                <KeyInsights insights={[]} loading={true} />
 
                 {/* Charts skeleton — 2x2 grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -337,7 +341,7 @@ function DashboardContent() {
                     </div>
 
                     {/* SECTION 2: WHAT — Key Insights strip */}
-                    <KeyInsights videos={recentVideos} />
+                    <KeyInsights insights={insights} loading={false} />
 
                     {/* SECTION 3: WHY — 2×2 chart grid */}
                     {/* AreaChart → recentVideos (last 20 chronological) */}
