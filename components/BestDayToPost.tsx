@@ -18,6 +18,10 @@ interface BestDayToPostProps {
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAYS_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// A day is "valid" if it has ≥2 uploads; otherwise it's "insufficient"
+const MIN_UPLOADS_FOR_VALID_DAY = 2;
 
 export default function BestDayToPost({ videos }: BestDayToPostProps) {
   // Group views by day of week (0=Sun → remap to Mon=0)
@@ -29,29 +33,9 @@ export default function BestDayToPost({ videos }: BestDayToPostProps) {
   videos.forEach((v) => {
     const jsDay = new Date(v.publishedAt).getDay(); // 0=Sun
     const monFirst = (jsDay + 6) % 7; // remap: Mon=0…Sun=6
-    buckets[monFirst].sum += v.views; // use new field name
+    buckets[monFirst].sum += v.views;
     buckets[monFirst].count += 1;
   });
-
-  // Check minimum: at least 7 distinct days with data
-  const daysWithData = buckets.filter((b) => b.count > 0).length;
-
-  if (daysWithData < 7) {
-    // Show chart with grey "No data" bars for empty days, but flag if too sparse
-    // If fewer than 3 days have data at all, show empty state
-    if (daysWithData < 3) {
-      return (
-        <ChartCard
-          title="Best Day to Post"
-          subtitle="When does this competitor get maximum reach?"
-          insight={null}
-        >
-          <EmptyChart />
-        </ChartCard>
-      );
-    }
-    // Otherwise fall through with partial data + grey bars
-  }
 
   const hasAnyData = buckets.some((b) => b.count > 0);
   if (!hasAnyData) {
@@ -66,35 +50,92 @@ export default function BestDayToPost({ videos }: BestDayToPostProps) {
     );
   }
 
-  // Build chart data: days with no uploads get avg=0 and noData=true
+  // Build chart data with validity flag
   const chartData = DAYS.map((day, i) => ({
     day,
+    dayFull: DAYS_FULL[i],
     avg: buckets[i].count > 0 ? Math.round(buckets[i].sum / buckets[i].count) : 0,
-    noData: buckets[i].count === 0,
     count: buckets[i].count,
+    noData: buckets[i].count === 0,                                     // zero uploads
+    insufficient: buckets[i].count > 0 && buckets[i].count < MIN_UPLOADS_FOR_VALID_DAY, // 1 upload
+    valid: buckets[i].count >= MIN_UPLOADS_FOR_VALID_DAY,               // 2+ uploads
   }));
 
-  const maxAvg = Math.max(...chartData.filter((d) => !d.noData).map((d) => d.avg));
-  const activeDays = chartData.filter((d) => !d.noData);
-  const totalAvg =
-    activeDays.length > 0
-      ? activeDays.reduce((s, d) => s + d.avg, 0) / activeDays.length
-      : 0;
-  const bestDay = chartData.find((d) => d.avg === maxAvg && !d.noData);
-  const pctAbove = totalAvg > 0 && bestDay
-    ? Math.round(((maxAvg - totalAvg) / totalAvg) * 100)
-    : 0;
+  // Valid days only for max/avg calculation
+  const validDays = chartData.filter((d) => d.valid);
 
-  const insight =
-    daysWithData < 7 ? (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-800 text-zinc-400 border border-white/5">
-        ⚠️ Insufficient history for all days
-      </span>
-    ) : bestDay ? (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/15">
-        🏆 {bestDay.day} gets {pctAbove}% more views than avg
-      </span>
-    ) : null;
+  // Need at least 1 valid day to show the chart meaningfully
+  if (validDays.length === 0) {
+    return (
+      <ChartCard
+        title="Best Day to Post"
+        subtitle="When does this competitor get maximum reach?"
+        insight={null}
+      >
+        <EmptyChart />
+      </ChartCard>
+    );
+  }
+
+  const maxAvg = Math.max(...validDays.map((d) => d.avg));
+  const totalAvg = validDays.reduce((s, d) => s + d.avg, 0) / validDays.length;
+  const bestDay = validDays.find((d) => d.avg === maxAvg)!;
+  const pctAbove = totalAvg > 0 ? Math.round(((maxAvg - totalAvg) / totalAvg) * 100) : 0;
+
+  // Insufficient days = days with exactly 1 upload
+  const insufficientDaysCount = chartData.filter((d) => d.insufficient).length;
+  // Only warn if MORE THAN 2 days are insufficient
+  const showWarning = insufficientDaysCount > 2;
+
+  const insight = showWarning ? (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-800 text-zinc-400 border border-white/5">
+      ⚠️ Some days need more upload history
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/15">
+      🏆 {bestDay.day} gets {pctAbove}% more views than avg
+    </span>
+  );
+
+  // Custom tooltip with context-aware messages
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: { payload: typeof chartData[0] }[];
+  }) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
+
+    if (d.noData) {
+      return (
+        <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
+          <p style={{ color: '#A1A1AA', fontSize: 11 }}>{d.dayFull}</p>
+          <p style={{ color: '#71717A', fontSize: 12 }}>No uploads</p>
+        </div>
+      );
+    }
+
+    if (d.insufficient) {
+      return (
+        <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
+          <p style={{ color: '#A1A1AA', fontSize: 11 }}>{d.dayFull}</p>
+          <p style={{ color: '#F59E0B', fontSize: 12 }}>Only 1 upload on {d.dayFull}s — not enough data</p>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
+        <p style={{ color: '#A1A1AA', fontSize: 11, marginBottom: 4 }}>{d.dayFull}</p>
+        <p style={{ color: '#E4E4E7', fontSize: 13, fontWeight: 600 }}>
+          Avg {formatNumber(d.avg)} views
+        </p>
+        <p style={{ color: '#71717A', fontSize: 11 }}>{d.count} upload{d.count !== 1 ? 's' : ''}</p>
+      </div>
+    );
+  };
 
   return (
     <ChartCard
@@ -121,44 +162,20 @@ export default function BestDayToPost({ videos }: BestDayToPostProps) {
             tickFormatter={(v) => formatNumber(Number(v))}
             width={64}
           />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#111',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '10px',
-            }}
-            itemStyle={{ color: '#E4E4E7' }}
-            formatter={(v, _name, props) => {
-              if (props.payload?.noData) return ['No data', ''];
-              return [formatNumber(Number(v)), 'Avg Views'];
-            }}
-            labelFormatter={(label, payload) => {
-              const d = payload?.[0]?.payload;
-              if (d?.noData) return `${label} — No uploads`;
-              return `${label} (${d?.count ?? 0} upload${d?.count !== 1 ? 's' : ''})`;
-            }}
-            cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-          />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
           <Bar dataKey="avg" radius={[5, 5, 0, 0]} barSize={28} minPointSize={4}>
             {chartData.map((entry, i) => (
               <Cell
                 key={i}
                 fill={
-                  entry.noData
-                    ? '#27272A'           // grey — no uploads on this day
-                    : entry.avg === maxAvg
-                    ? '#3B82F6'           // blue — best day
-                    : '#3F3F46'           // muted — other days
+                  entry.noData        ? '#27272A'  // dark grey — no uploads
+                  : entry.insufficient ? '#3F3F46'  // muted grey — 1 upload, insufficient
+                  : entry.avg === maxAvg ? '#3B82F6' // blue — best valid day
+                  : '#52525B'                        // normal valid day
                 }
-                stroke={
-                  entry.noData
-                    ? 'transparent'
-                    : entry.avg === maxAvg
-                    ? '#60A5FA'
-                    : 'transparent'
-                }
+                fillOpacity={entry.noData ? 0.35 : entry.insufficient ? 0.5 : 0.9}
+                stroke={entry.avg === maxAvg && entry.valid ? '#60A5FA' : 'transparent'}
                 strokeWidth={1}
-                fillOpacity={entry.noData ? 0.4 : 0.9}
               />
             ))}
           </Bar>
