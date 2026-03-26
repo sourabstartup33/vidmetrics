@@ -28,13 +28,13 @@ export default function Sidebar() {
               <Link
                 key={item.name}
                 href={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
                   isActive 
-                    ? 'bg-indigo-500/10 text-indigo-400 border-l-4 border-indigo-500' 
-                    : 'text-zinc-400 hover:bg-white/5 hover:text-white border-l-4 border-transparent'
+                    ? 'bg-indigo-500/10 text-white border-l-[3px] border-indigo-500 rounded-r-lg rounded-l-none' 
+                    : 'text-zinc-500 hover:bg-white/5 hover:text-white border-l-[3px] border-transparent rounded-lg'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-400' : 'text-zinc-500'}`} />
+                <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-400' : 'text-zinc-600'}`} />
                 {item.name}
               </Link>
             );
@@ -42,7 +42,7 @@ export default function Sidebar() {
         </div>
       </div>
       
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-white/10 bg-[#0A0A0A]">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden border border-white/10">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -53,7 +53,7 @@ export default function Sidebar() {
             <p className="text-xs text-zinc-500">Acme Corp</p>
           </div>
         </div>
-        <button className="w-full py-2 px-3 bg-white text-black text-sm font-medium rounded-lg hover:bg-zinc-200 transition-colors">
+        <button className="w-full py-2 px-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/20 text-sm font-bold rounded-lg hover:to-indigo-500 transition-colors">
           Upgrade Plan
         </button>
       </div>

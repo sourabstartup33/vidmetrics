@@ -33,10 +33,10 @@ export default function FilterBar({
           <button
             key={f.value}
             onClick={() => onFilterChange(f.value)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
               filter === f.value
-                ? 'bg-[#1A1A1A] text-white shadow-sm border border-white/5'
-                : 'text-zinc-400 hover:text-white'
+                ? 'bg-indigo-500 text-white shadow-sm'
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
             }`}
           >
             {f.label}
@@ -63,7 +63,7 @@ export default function FilterBar({
         
         <button
           onClick={onExport}
-          className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white text-sm font-medium rounded-lg hover:bg-white/10 transition-colors shrink-0"
+          className="flex items-center gap-2 px-4 py-2 bg-transparent border border-white/10 text-white text-sm font-semibold rounded-lg hover:border-indigo-500 hover:bg-indigo-500/10 hover:text-indigo-300 transition-colors shrink-0"
         >
           <Download className="w-4 h-4" />
           Export CSV

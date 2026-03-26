@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertCircle, Loader2, X, RefreshCw } from 'lucide-react';
+import { AlertCircle, Loader2, X, RefreshCw, Info, Inbox, LayoutDashboard } from 'lucide-react';
 import DashboardNav from '@/components/DashboardNav';
 import Sidebar from '@/components/Sidebar';
 import ChannelHeader from '@/components/ChannelHeader';
@@ -210,17 +210,18 @@ function DashboardContent() {
   }, [sortedVideos, channel]);
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans">
-      {/* Navbar — has the working channel analyze form */}
+    <div className="min-h-screen flex flex-col bg-black text-white selection:bg-indigo-500/30 font-sans">
       <DashboardNav onAnalyze={handleNavAnalyze} isLoading={loading} />
 
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden relative">
         <Sidebar />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto h-[calc(100vh-4rem)]">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 overflow-y-auto relative z-10">
+          {/* Global Dashboard Glow & Noise */}
+          <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(99,102,241,0.06)_0%,transparent_70%)] pointer-events-none z-0" />
+          <div className="fixed inset-0 bg-[url('/noise.png')] opacity-15 mix-blend-overlay pointer-events-none z-0" />
 
-            {/* ── Inline input error (when nav form fails) ─── */}
+          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 w-full relative z-10">         {/* ── Inline input error (when nav form fails) ─── */}
             {inputError && (
               <p className="mb-4 text-sm text-red-400 flex items-center gap-1.5">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -315,13 +316,16 @@ function DashboardContent() {
               <div>
                 {/* ── Demo banner ──────────────────────────── */}
                 {isDemoMode && !demoBannerDismissed && (
-                  <div className="mb-5 flex items-center justify-between gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl">
-                    <p className="text-sm text-zinc-400">
-                      👋 Demo analysis of <span className="text-zinc-200 font-medium">@MrBeast</span> — paste any channel URL above to analyze your own competitor
-                    </p>
+                  <div className="mb-5 flex items-start sm:items-center justify-between gap-3 px-4 py-3 bg-indigo-500/10 border border-indigo-500/20 border-l-[3px] border-l-indigo-500 rounded-lg shadow-sm">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5 sm:mt-0" />
+                      <p className="text-sm text-indigo-200">
+                        Demo analysis of <span className="text-white font-bold">@MrBeast</span> — paste any channel URL above to analyze your own competitor
+                      </p>
+                    </div>
                     <button
                       onClick={() => setDemoBannerDismissed(true)}
-                      className="shrink-0 p-1 text-zinc-500 hover:text-zinc-300 transition-colors rounded-md hover:bg-white/10"
+                      className="shrink-0 p-1.5 text-indigo-400 hover:text-white transition-colors rounded-md hover:bg-white/10"
                       aria-label="Dismiss demo banner"
                     >
                       <X className="w-4 h-4" />
@@ -397,7 +401,7 @@ function DashboardContent() {
                   ) : insufficientData ? (
                     <div className="bg-[#0A0A0A] rounded-xl border border-white/10">
                       <EmptyState
-                        icon="📭"
+                        icon={<Inbox className="w-8 h-8 opacity-60" />}
                         title="Not enough recent data"
                         message={insufficientData}
                         action={{ label: "Show all videos", onClick: () => handleFilterChange('all') }}
@@ -408,7 +412,7 @@ function DashboardContent() {
                   ) : (
                     <div className="bg-[#0A0A0A] rounded-xl border border-white/10">
                       <EmptyState
-                        icon="🎬"
+                        icon={<LayoutDashboard className="w-8 h-8 opacity-60" />}
                         title="No videos found"
                         message="No videos found for this time period."
                         action={{ label: "Show all videos", onClick: () => handleFilterChange('all') }}

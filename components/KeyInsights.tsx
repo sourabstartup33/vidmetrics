@@ -86,7 +86,7 @@ export default function KeyInsights({ insights, loading }: KeyInsightsProps) {
         return (
           <div
             key={insight.id}
-            className={`rounded-xl border border-l-4 p-4 ${styles.bg} ${styles.border}`}
+            className={`rounded-xl border border-l-4 p-4 transition-all hover:border-white/15 hover:scale-[1.01] ${styles.bg} ${styles.border}`}
           >
             <div className="flex items-start gap-2.5">
               <div className={`mt-0.5 shrink-0 ${styles.iconColor}`}>

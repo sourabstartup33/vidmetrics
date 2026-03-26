@@ -9,9 +9,10 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
+import { Trophy, AlertTriangle } from 'lucide-react';
 import { Video } from '@/types';
 import { formatNumber } from '@/lib/utils';
-import { ChartCard, EmptyChart } from './AreaChart';
+import { ChartCard, EmptyChart } from './ChartCard';
 
 interface BestDayToPostProps {
   videos: Video[];
@@ -88,12 +89,14 @@ export default function BestDayToPost({ videos }: BestDayToPostProps) {
   const showWarning = insufficientDaysCount > 2;
 
   const insight = showWarning ? (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-800 text-zinc-400 border border-white/5">
-      ⚠️ Some days need more upload history
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-800 text-zinc-400 border border-white/5">
+      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+      Some days need more upload history
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/15">
-      🏆 {bestDay.day} gets {pctAbove}% more views than avg
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/15">
+      <Trophy className="w-3.5 h-3.5" />
+      {bestDay.day} gets {pctAbove}% more views than avg
     </span>
   );
 

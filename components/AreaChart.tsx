@@ -9,8 +9,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { Video } from '@/types';
 import { formatNumber } from '@/lib/utils';
+import { ChartCard } from './ChartCard';
 
 interface ViewsOverTimeProps {
   videos: Video[];
@@ -54,15 +56,17 @@ function trendPill(data: { views: number }[]) {
   const avgFirst = first.reduce((s, d) => s + d.views, 0) / first.length;
   const avgLast = last.reduce((s, d) => s + d.views, 0) / last.length;
   const growing = avgLast > avgFirst;
+  const Icon = growing ? TrendingUp : TrendingDown;
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
         growing
           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
           : 'bg-red-500/15 text-red-400 border border-red-500/20'
       }`}
     >
-      {growing ? '📈 Growing' : '📉 Declining'}
+      <Icon className="w-3.5 h-3.5" />
+      {growing ? 'Growing trend' : 'Declining trend'}
     </span>
   );
 }
@@ -160,40 +164,3 @@ export default function ViewsOverTime({ videos }: ViewsOverTimeProps) {
     </ChartCard>
   );
 }
-
-// ── Shared card shell ─────────────────────────────────────────
-function ChartCard({
-  title,
-  subtitle,
-  insight,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  insight: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-[#0A0A0A] rounded-2xl border border-white/10 p-5 flex flex-col gap-3">
-      <div>
-        <h3 className="text-sm font-bold text-white">{title}</h3>
-        <p className="text-xs text-zinc-500 mt-0.5">{subtitle}</p>
-      </div>
-      <div className="h-52 w-full">{children}</div>
-      <div className="flex items-center justify-between pt-1 border-t border-white/5 min-h-[28px]">
-        <span className="text-xs text-zinc-600">Based on last 20 uploads</span>
-        {insight}
-      </div>
-    </div>
-  );
-}
-
-function EmptyChart() {
-  return (
-    <div className="h-full flex items-center justify-center text-zinc-600 text-xs">
-      Not enough data to render this chart
-    </div>
-  );
-}
-
-export { ChartCard, EmptyChart };

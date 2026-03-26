@@ -9,17 +9,16 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
+import { Trophy } from 'lucide-react';
 import { Video } from '@/types';
-import { ChartCard, EmptyChart } from './AreaChart';
+import { ChartCard, EmptyChart } from './ChartCard';
 
 interface TopEngagementBarProps {
   videos: Video[];
 }
 
-function barColor(trendingScore: number) {
-  if (trendingScore > 70) return '#22C55E'; // green
-  if (trendingScore >= 40) return '#F59E0B'; // amber
-  return '#EF4444'; // red
+function barColor(isTop: boolean) {
+  return isTop ? '#6366F1' : '#27272A'; // active indigo vs inactive dark grey
 }
 
 export default function TopEngagementBar({ videos }: TopEngagementBarProps) {
@@ -48,8 +47,9 @@ export default function TopEngagementBar({ videos }: TopEngagementBarProps) {
 
   const best = top5[0];
   const insight = (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/15">
-      🏆 Best: {best.engagementRate}% engagement
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/15">
+      <Trophy className="w-3.5 h-3.5" />
+      Best: {best.engagementRate}% engagement
     </span>
   );
 
@@ -95,9 +95,9 @@ export default function TopEngagementBar({ videos }: TopEngagementBarProps) {
             itemStyle={{ color: '#E4E4E7' }}
             cursor={{ fill: 'rgba(255,255,255,0.04)' }}
           />
-          <Bar dataKey="rate" radius={[0, 5, 5, 0]} barSize={18}>
+          <Bar dataKey="rate" radius={[0, 4, 4, 0]} barSize={20}>
             {chartData.map((entry, i) => (
-              <Cell key={i} fill={barColor(entry.trendingScore)} fillOpacity={0.85} />
+              <Cell key={i} fill={barColor(i === 0)} fillOpacity={1} />
             ))}
           </Bar>
         </RechartsBarChart>

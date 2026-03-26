@@ -1,9 +1,9 @@
 'use client';
 
-import { ReactNode } from 'react';
+import React from 'react';
 
 interface EmptyStateProps {
-  icon: ReactNode | string;   // emoji string or a React element (e.g. a lucide icon)
+  icon?: React.ReactNode;
   title: string;
   message: string;
   action?: {
@@ -12,24 +12,25 @@ interface EmptyStateProps {
   };
 }
 
-export default function EmptyState({ icon, title, message, action }: EmptyStateProps) {
+export default function EmptyState({
+  icon = null,
+  title,
+  message,
+  action,
+}: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4 text-2xl">
-        {typeof icon === 'string' ? (
-          <span>{icon}</span>
-        ) : (
-          icon
-        )}
+      <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex flex-col items-center justify-center mb-4 text-zinc-400">
+        {icon}
       </div>
       <h3 className="text-base font-bold text-white mb-2">{title}</h3>
       <p className="text-sm text-zinc-400 max-w-sm leading-relaxed">{message}</p>
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-5 text-indigo-400 text-sm font-medium hover:text-indigo-300 transition-colors"
+          className="mt-6 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold rounded-lg transition-colors"
         >
-          {action.label} →
+          {action.label}
         </button>
       )}
     </div>

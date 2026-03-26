@@ -16,7 +16,7 @@ export default function VideoTable({ videos }: VideoTableProps) {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[900px]">
           <thead>
-            <tr className="bg-white/5 border-b border-white/10 text-xs uppercase tracking-wider text-zinc-400 font-semibold">
+            <tr className="bg-[#111111] border-b border-white/10 text-xs uppercase tracking-widest text-zinc-500 font-semibold">
               <th className="px-6 py-4">#</th>
               <th className="px-6 py-4">Thumbnail</th>
               <th className="px-6 py-4">Title</th>
@@ -31,7 +31,7 @@ export default function VideoTable({ videos }: VideoTableProps) {
           </thead>
           <tbody className="divide-y divide-white/5">
             {videos.map((video, index) => (
-              <tr key={video.id} className="hover:bg-white/5 transition-colors group">
+              <tr key={video.id} className="hover:bg-white/5 transition-colors group border-b border-white/5">
                 <td className="px-6 py-4 text-sm font-medium text-zinc-500">{index + 1}</td>
                 <td className="px-6 py-4">
                   <div className="w-24 h-14 bg-zinc-800 rounded-md overflow-hidden relative">
@@ -75,9 +75,9 @@ export default function VideoTable({ videos }: VideoTableProps) {
         </table>
       </div>
       
-      <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between bg-white/5">
-        <p className="text-sm text-zinc-400">
-          Showing <span className="font-medium text-white">{videos.length}</span> video{videos.length !== 1 ? 's' : ''}
+      <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between bg-[#0A0A0A]">
+        <p className="text-sm text-zinc-500">
+          Showing <span className="font-semibold text-white">{videos.length}</span> video{videos.length !== 1 ? 's' : ''}
         </p>
       </div>
     </div>

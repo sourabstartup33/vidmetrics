@@ -2,7 +2,7 @@
 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Video } from '@/types';
-import { ChartCard, EmptyChart } from './AreaChart';
+import { ChartCard, EmptyChart } from './ChartCard';
 
 interface ContentBreakdownProps {
   videos: Video[];
@@ -27,9 +27,9 @@ export default function ContentBreakdown({ videos }: ContentBreakdownProps) {
   const total = videos.length;
 
   const chartData = [
-    { name: '🔥 Hot',  value: hot,  color: '#22C55E' },
-    { name: '⚡ Warm', value: warm, color: '#F59E0B' },
-    { name: '❄️ Cold', value: cold, color: '#6B7280' },
+    { name: 'Hot',  value: hot,  color: '#22C55E' },
+    { name: 'Warm', value: warm, color: '#F59E0B' },
+    { name: 'Cold', value: cold, color: '#6B7280' },
   ].filter((d) => d.value > 0);
 
   const hotPct = total > 0 ? Math.round(((hot + warm) / total) * 100) : 0;
@@ -84,21 +84,21 @@ export default function ContentBreakdown({ videos }: ContentBreakdownProps) {
 
         {/* Stat pills */}
         <div className="flex items-center gap-3 flex-wrap justify-center">
-          <Pill emoji="🔥" label="Hot"  count={hot}  color="text-emerald-400" />
-          <Pill emoji="⚡" label="Warm" count={warm} color="text-amber-400" />
-          <Pill emoji="❄️" label="Cold" count={cold} color="text-zinc-400" />
+          <Pill dotColor="bg-emerald-400" label="Hot"  count={hot}  color="text-emerald-400" />
+          <Pill dotColor="bg-amber-400"   label="Warm" count={warm} color="text-amber-400" />
+          <Pill dotColor="bg-zinc-400"    label="Cold" count={cold} color="text-zinc-400" />
         </div>
       </div>
     </ChartCard>
   );
 }
 
-function Pill({ emoji, label, count, color }: { emoji: string; label: string; count: number; color: string }) {
+function Pill({ dotColor, label, count, color }: { dotColor: string; label: string; count: number; color: string }) {
   return (
-    <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-      <span className="text-sm">{emoji}</span>
-      <span className={`text-xs font-bold ${color}`}>{count}</span>
-      <span className="text-xs text-zinc-500">{label}</span>
+    <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+      <div className={`w-2 h-2 rounded-full ${dotColor}`} />
+      <span className={`text-xs font-bold leading-none ${color}`}>{count}</span>
+      <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest leading-none">{label}</span>
     </div>
   );
 }
