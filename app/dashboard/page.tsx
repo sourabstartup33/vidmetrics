@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, AlertCircle, Loader2, Youtube } from 'lucide-react';
+import { Search, AlertCircle, Loader2, X, RefreshCw } from 'lucide-react';
 import DashboardNav from '@/components/DashboardNav';
 import Sidebar from '@/components/Sidebar';
 import ChannelHeader from '@/components/ChannelHeader';
@@ -13,9 +13,32 @@ import TopEngagementBar from '@/components/BarChart';
 import BestDayToPost from '@/components/BestDayToPost';
 import ContentBreakdown from '@/components/ContentBreakdown';
 import KeyInsights from '@/components/KeyInsights';
-import { Channel, Video } from '@/types';
-import { analyzeChannel, getErrorMessage, getDemoData } from '@/lib/youtube';
+import { Channel, Video, Timeframe } from '@/types';
+import { analyzeChannel, fetchTableVideosForTab, getErrorMessage } from '@/lib/youtube';
 import { formatDate } from '@/lib/utils';
+
+// Map FilterBar's FilterOption → our Timeframe type
+function toTimeframe(filter: FilterOption): Timeframe {
+  switch (filter) {
+    case 'month': return 'thisMonth';
+    case 'week': return 'thisWeek';
+    default: return 'allTime';
+  }
+}
+
+// Min video thresholds for time-filtered tabs
+const MIN_VIDEOS: Record<Timeframe, number> = {
+  allTime: 0,
+  thisMonth: 5,
+  thisWeek: 3,
+};
+
+// Empty state messages for insufficient data
+const EMPTY_MESSAGES: Record<Timeframe, string> = {
+  allTime: '',
+  thisMonth: "This channel hasn't posted enough this month to analyze. Try 'All Time' for full performance data.",
+  thisWeek: "This channel hasn't posted enough this week to analyze. Try 'All Time' for full performance data.",
+};
 
 // Inner component that reads search params (must be inside Suspense)
 function DashboardContent() {
@@ -23,29 +46,57 @@ function DashboardContent() {
 
   // ── State ───────────────────────────────────────────────────
   const [channel, setChannel] = useState<Channel | null>(null);
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [tableVideos, setTableVideos] = useState<Video[]>([]);
+  const [recentVideos, setRecentVideos] = useState<Video[]>([]);
+  const [extendedVideos, setExtendedVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(false);
+  const [tabLoading, setTabLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchUrl, setSearchUrl] = useState('');
   const [inputError, setInputError] = useState('');
   const [sort, setSort] = useState<SortOption>('views');
   const [filter, setFilter] = useState<FilterOption>('all');
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [demoBannerDismissed, setDemoBannerDismissed] = useState(false);
+  const [lastFetchUrl, setLastFetchUrl] = useState('');
+  const [insufficientData, setInsufficientData] = useState('');
 
-  // ── Fetch logic ─────────────────────────────────────────────
-  const doFetch = useCallback(async (url: string) => {
+  // ── Tab cache: avoid re-fetching already-loaded timeframes ──
+  const tabCache = useRef<Record<Timeframe, Video[] | null>>({
+    allTime: null,
+    thisMonth: null,
+    thisWeek: null,
+  });
+
+  // ── Full fetch (new channel) ────────────────────────────────
+  const doFetch = useCallback(async (url: string, isDemo = false) => {
     setLoading(true);
     setError(null);
     setInputError('');
+    setInsufficientData('');
+    setLastFetchUrl(url);
+    // Clear tab cache for new channel
+    tabCache.current = { allTime: null, thisMonth: null, thisWeek: null };
+
     try {
-      const result = await analyzeChannel(url);
+      const result = await analyzeChannel(url, 'allTime');
       setChannel(result.channel);
-      setVideos(result.videos);
+      setTableVideos(result.tableVideos);
+      setRecentVideos(result.recentVideos);
+      setExtendedVideos(result.extendedVideos);
       setSort('views');
       setFilter('all');
+      setIsDemoMode(isDemo);
+      // Cache the allTime tab
+      tabCache.current.allTime = result.tableVideos;
       // Update browser tab title
       document.title = `${result.channel.title} — VidMetrics`;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'NETWORK_ERROR';
+      setChannel(null);
+      setTableVideos([]);
+      setRecentVideos([]);
+      setExtendedVideos([]);
       if (msg === 'INVALID_URL') {
         setInputError('Please enter a valid YouTube channel URL');
       } else if (msg === 'CHANNEL_NOT_FOUND') {
@@ -58,17 +109,49 @@ function DashboardContent() {
     }
   }, []);
 
-  // ── Load demo data on mount + handle ?channel= param ───────
+  // ── Tab switch fetch (same channel, different timeframe) ────
+  const doTabFetch = useCallback(async (filterVal: FilterOption) => {
+    const timeframe = toTimeframe(filterVal);
+
+    // Check cache first
+    if (tabCache.current[timeframe] !== null) {
+      const cached = tabCache.current[timeframe]!;
+      setTableVideos(cached);
+      setInsufficientData(
+        cached.length < MIN_VIDEOS[timeframe] ? EMPTY_MESSAGES[timeframe] : '',
+      );
+      return;
+    }
+
+    if (!channel) return;
+
+    setTabLoading(true);
+    setInsufficientData('');
+
+    try {
+      const videos = await fetchTableVideosForTab(channel.id, timeframe);
+      tabCache.current[timeframe] = videos;
+      setTableVideos(videos);
+      if (videos.length < MIN_VIDEOS[timeframe]) {
+        setInsufficientData(EMPTY_MESSAGES[timeframe]);
+      }
+    } catch {
+      // If tab fetch fails, show error but don't wipe channel
+      setInsufficientData('Failed to load data for this time period. Please try again.');
+    } finally {
+      setTabLoading(false);
+    }
+  }, [channel]);
+
+  // ── Load on mount + handle ?channel= param ─────────────────
   useEffect(() => {
     const channelParam = searchParams.get('channel');
     if (channelParam) {
       setSearchUrl(channelParam);
-      doFetch(channelParam);
+      doFetch(channelParam, false);
     } else {
-      // Load demo data silently
-      const demo = getDemoData();
-      setChannel(demo.channel);
-      setVideos(demo.videos);
+      // Auto-load real MrBeast data as demo
+      doFetch('@MrBeast', true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -81,34 +164,34 @@ function DashboardContent() {
         setInputError('Please enter a YouTube channel URL');
         return;
       }
-      doFetch(searchUrl.trim());
+      setIsDemoMode(false);
+      setDemoBannerDismissed(false);
+      doFetch(searchUrl.trim(), false);
     },
     [searchUrl, doFetch],
   );
 
-  // ── Filter ──────────────────────────────────────────────────
-  const filteredVideos = useMemo(() => {
-    const now = Date.now();
-    return videos.filter((v) => {
-      if (filter === 'all') return true;
-      const days = (now - new Date(v.publishedAt).getTime()) / (1000 * 60 * 60 * 24);
-      if (filter === 'month') return days <= 30;
-      if (filter === 'week') return days <= 7;
-      return true;
-    });
-  }, [videos, filter]);
+  // ── Filter change handler — triggers API call per tab ──────
+  const handleFilterChange = useCallback(
+    (newFilter: FilterOption) => {
+      setFilter(newFilter);
+      setSort('views');
+      doTabFetch(newFilter);
+    },
+    [doTabFetch],
+  );
 
   // ── Sort ────────────────────────────────────────────────────
   const sortedVideos = useMemo(() => {
-    const s = [...filteredVideos];
+    const s = [...tableVideos];
     switch (sort) {
-      case 'views':     s.sort((a, b) => b.viewCount - a.viewCount); break;
+      case 'views':     s.sort((a, b) => b.views - a.views); break;
       case 'engagement':s.sort((a, b) => b.engagementRate - a.engagementRate); break;
       case 'trending':  s.sort((a, b) => b.trendingScore - a.trendingScore); break;
       case 'date':      s.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()); break;
     }
     return s;
-  }, [filteredVideos, sort]);
+  }, [tableVideos, sort]);
 
   // ── CSV Export ──────────────────────────────────────────────
   const handleExport = useCallback(() => {
@@ -116,10 +199,10 @@ function DashboardContent() {
     const headers = ['Title', 'Views', 'Likes', 'Comments', 'Engagement Rate', 'Trending Score', 'Published', 'URL'];
     const rows = sortedVideos.map((v) => [
       `"${v.title.replace(/"/g, '""')}"`,
-      v.viewCount, v.likeCount, v.commentCount,
+      v.views, v.likes, v.comments,
       `${v.engagementRate}%`, v.trendingScore,
       formatDate(v.publishedAt),
-      `https://www.youtube.com/watch?v=${v.id}`,
+      v.url,
     ]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -187,14 +270,21 @@ function DashboardContent() {
               )}
             </div>
 
-            {/* ── API/network error banner ─────────────────── */}
-            {error && !loading && (
-              <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-red-300 font-medium">{error}</p>
-                  <p className="text-xs text-red-400/70 mt-1">Try a different URL or check your internet connection.</p>
+            {/* ── API/network error full-page state ─────────── */}
+            {error && !loading && !channel && (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
+                  <AlertCircle className="w-8 h-8 text-red-400" />
                 </div>
+                <h2 className="text-lg font-bold text-white mb-2">Unable to load channel data</h2>
+                <p className="text-zinc-400 text-sm max-w-sm mb-6">{error}</p>
+                <button
+                  onClick={() => lastFetchUrl && doFetch(lastFetchUrl, lastFetchUrl === '@MrBeast' && !searchUrl)}
+                  className="px-5 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors text-sm flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </button>
               </div>
             )}
 
@@ -252,22 +342,25 @@ function DashboardContent() {
               </div>
             )}
 
-            {/* ── Channel Not Found empty state ────────────── */}
-            {!loading && !channel && error && (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-16 h-16 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center mb-4">
-                  <Youtube className="w-8 h-8 text-zinc-600" />
-                </div>
-                <h2 className="text-lg font-bold text-white mb-2">No channel loaded</h2>
-                <p className="text-zinc-400 text-sm max-w-sm">
-                  Paste a YouTube channel URL above and click Analyze to get started.
-                </p>
-              </div>
-            )}
-
             {/* ── Main Content ─────────────────────────────── */}
             {!loading && channel && (
               <div>
+                {/* ── Demo banner ──────────────────────────── */}
+                {isDemoMode && !demoBannerDismissed && (
+                  <div className="mb-5 flex items-center justify-between gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl">
+                    <p className="text-sm text-zinc-400">
+                      👋 Demo analysis of <span className="text-zinc-200 font-medium">@MrBeast</span> — paste any channel URL above to analyze your own competitor
+                    </p>
+                    <button
+                      onClick={() => setDemoBannerDismissed(true)}
+                      className="shrink-0 p-1 text-zinc-500 hover:text-zinc-300 transition-colors rounded-md hover:bg-white/10"
+                      aria-label="Dismiss demo banner"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
                 <ChannelHeader channel={channel} />
 
                 <div className="mb-8">
@@ -283,17 +376,47 @@ function DashboardContent() {
                     sort={sort}
                     onSortChange={setSort}
                     filter={filter}
-                    onFilterChange={setFilter}
+                    onFilterChange={handleFilterChange}
                     onExport={handleExport}
                   />
 
-                  {sortedVideos.length > 0 ? (
+                  {/* Tab-level loading skeleton */}
+                  {tabLoading ? (
+                    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 overflow-hidden">
+                      <div className="h-12 bg-white/5 border-b border-white/10" />
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="flex items-center gap-5 px-6 py-4 border-b border-white/5 animate-pulse">
+                          <div className="w-5 h-4 bg-zinc-800 rounded shrink-0" />
+                          <div className="w-24 h-14 bg-zinc-800 rounded-md shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 w-3/4 bg-zinc-800 rounded" />
+                            <div className="h-3 w-1/3 bg-zinc-800 rounded" />
+                          </div>
+                          <div className="h-4 w-16 bg-zinc-800 rounded" />
+                          <div className="h-4 w-12 bg-zinc-800 rounded" />
+                          <div className="h-6 w-16 bg-zinc-800 rounded-full" />
+                          <div className="h-6 w-20 bg-zinc-800 rounded-full" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : insufficientData ? (
+                    /* Insufficient data empty state for time-filtered tabs */
+                    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-16 text-center">
+                      <p className="text-zinc-400 text-sm">{insufficientData}</p>
+                      <button
+                        onClick={() => handleFilterChange('all')}
+                        className="mt-3 text-indigo-400 text-sm hover:text-indigo-300 transition-colors"
+                      >
+                        Show all videos →
+                      </button>
+                    </div>
+                  ) : sortedVideos.length > 0 ? (
                     <VideoTable videos={sortedVideos} />
                   ) : (
                     <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-16 text-center">
                       <p className="text-zinc-400 text-sm">No videos found for this time period.</p>
                       <button
-                        onClick={() => setFilter('all')}
+                        onClick={() => handleFilterChange('all')}
                         className="mt-3 text-indigo-400 text-sm hover:text-indigo-300 transition-colors"
                       >
                         Show all videos →
@@ -302,7 +425,8 @@ function DashboardContent() {
                   )}
                 </div>
 
-                {sortedVideos.length > 0 && (
+                {/* ── Charts use dedicated datasets ─────────── */}
+                {recentVideos.length > 0 && (
                   <div className="mb-8">
                     {/* ── Section header ─────────────────────── */}
                     <div className="mb-5">
@@ -311,14 +435,14 @@ function DashboardContent() {
                     </div>
 
                     {/* ── Key Insights strip ──────────────────── */}
-                    <KeyInsights videos={sortedVideos} />
+                    <KeyInsights videos={recentVideos} />
 
                     {/* ── 2×2 chart grid ──────────────────────── */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      <ViewsOverTime videos={sortedVideos} />
-                      <TopEngagementBar videos={sortedVideos} />
-                      <BestDayToPost videos={sortedVideos} />
-                      <ContentBreakdown videos={sortedVideos} />
+                      <ViewsOverTime videos={recentVideos} />
+                      <TopEngagementBar videos={recentVideos} />
+                      <BestDayToPost videos={extendedVideos} />
+                      <ContentBreakdown videos={recentVideos} />
                     </div>
                   </div>
                 )}

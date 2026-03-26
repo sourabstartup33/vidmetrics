@@ -1,5 +1,8 @@
+import { Video } from '@/types';
+
 // ── Format large numbers: 89200000 → "89.2M" ───────────────
 export function formatNumber(num: number): string {
+  if (num == null || isNaN(num)) return '0';
   if (num >= 1_000_000_000) {
     return `${(num / 1_000_000_000).toFixed(1)}B`;
   }
@@ -41,36 +44,67 @@ export function calcEngagement(
   comments: number,
   views: number,
 ): number {
-  if (views === 0) return 0;
+  if (!views || views === 0) return 0;
   return Number((((likes + comments) / views) * 100).toFixed(2));
 }
 
 // ── Trending score: 0-100 ───────────────────────────────────
-// Base:  engagement rate normalized 0-100 (capped at 10% → 100)
+// Base:  engagement rate normalized to 0-65 range
 // Boost: published within 30 days → +20
 // Boost: views > channel average  → +15
-// Cap at 100
+// Cap at 100, floor at 0
 export function calcTrendingScore(
-  engagementRate: number,
-  publishedAt: string,
-  views: number,
+  video: Video,
   channelAvgViews: number,
 ): number {
-  // Normalize engagement: 0% → 0, 10%+ → 100
-  const base = Math.min((engagementRate / 10) * 100, 100);
+  // Normalize engagement: 0% → 0, 10%+ → 65
+  const base = Math.min((video.engagementRate / 10) * 65, 65);
 
   let score = base;
 
   // Recency boost
   const daysSincePublish = Math.floor(
-    (Date.now() - new Date(publishedAt).getTime()) / (1000 * 60 * 60 * 24),
+    (Date.now() - new Date(video.publishedAt).getTime()) / (1000 * 60 * 60 * 24),
   );
   if (daysSincePublish <= 30) score += 20;
 
   // Above-average boost
-  if (channelAvgViews > 0 && views > channelAvgViews) score += 15;
+  if (channelAvgViews > 0 && video.views > channelAvgViews) score += 15;
 
-  return Math.min(Math.round(score), 100);
+  return Math.min(Math.max(Math.round(score), 0), 100);
+}
+
+// ── Parse ISO 8601 duration → seconds ───────────────────────
+// Converts PT15M33S → 933, PT1H2M3S → 3723, etc.
+export function parseDuration(iso8601: string): number {
+  if (!iso8601) return 0;
+  const match = iso8601.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  const hours = parseInt(match[1] || '0', 10);
+  const minutes = parseInt(match[2] || '0', 10);
+  const seconds = parseInt(match[3] || '0', 10);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+// ── Get day of week from ISO date ───────────────────────────
+export function getDayOfWeek(iso: string): string {
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return DAYS[new Date(iso).getDay()];
+}
+
+// ── Get ISO week number ─────────────────────────────────────
+export function getWeekNumber(iso: string): number {
+  const date = new Date(iso);
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+// ── Calculate channel average views ─────────────────────────
+export function calcChannelAvgViews(videos: Video[]): number {
+  if (videos.length === 0) return 0;
+  return Math.round(videos.reduce((sum, v) => sum + v.views, 0) / videos.length);
 }
 
 // ── Parse YouTube URL → { handle?, channelId? } ────────────

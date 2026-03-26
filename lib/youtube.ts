@@ -1,13 +1,27 @@
-import { Channel, Video, ChannelAnalysis } from '@/types';
-import { calcEngagement, calcTrendingScore, parseYouTubeURL } from '@/lib/utils';
+import { Channel, Video, DashboardData, ChannelAnalysis, Timeframe } from '@/types';
+import {
+  calcEngagement,
+  calcTrendingScore,
+  calcChannelAvgViews,
+  getDayOfWeek,
+  getWeekNumber,
+  parseYouTubeURL,
+} from '@/lib/utils';
 
 const API_BASE = 'https://www.googleapis.com/youtube/v3';
+const isDev = process.env.NODE_ENV === 'development';
 
 function getApiKey(): string | undefined {
-  return process.env.NEXT_PUBLIC_YOUTUBE_API_KEY && 
-         process.env.NEXT_PUBLIC_YOUTUBE_API_KEY !== 'your_key_here'
+  return process.env.NEXT_PUBLIC_YOUTUBE_API_KEY &&
+    process.env.NEXT_PUBLIC_YOUTUBE_API_KEY !== 'your_key_here'
     ? process.env.NEXT_PUBLIC_YOUTUBE_API_KEY
     : undefined;
+}
+
+function logQuota(label: string, units: number) {
+  if (isDev) {
+    console.log(`[YouTube API] ${label}: ~${units} units`);
+  }
 }
 
 // ── Fetch channel by @handle ────────────────────────────────
@@ -15,12 +29,12 @@ export async function fetchChannelByHandle(handle: string): Promise<Channel> {
   const key = getApiKey();
   if (!key) throw new Error('NO_API_KEY');
 
-  // Remove leading @ if present for the API call
   const cleanHandle = handle.startsWith('@') ? handle : `@${handle}`;
 
   const res = await fetch(
     `${API_BASE}/channels?part=snippet,statistics&forHandle=${encodeURIComponent(cleanHandle)}&key=${key}`,
   );
+  logQuota('channels (by handle)', 1);
 
   if (res.status === 403) throw new Error('QUOTA_EXCEEDED');
   if (!res.ok) throw new Error('NETWORK_ERROR');
@@ -39,6 +53,7 @@ export async function fetchChannelById(id: string): Promise<Channel> {
   const res = await fetch(
     `${API_BASE}/channels?part=snippet,statistics&id=${encodeURIComponent(id)}&key=${key}`,
   );
+  logQuota('channels (by ID)', 1);
 
   if (res.status === 403) throw new Error('QUOTA_EXCEEDED');
   if (!res.ok) throw new Error('NETWORK_ERROR');
@@ -49,17 +64,37 @@ export async function fetchChannelById(id: string): Promise<Channel> {
   return mapChannel(data.items[0]);
 }
 
-// ── Fetch top videos by view count ──────────────────────────
+// ── Fetch video IDs with timeframe support ──────────────────
+// allTime:   order=viewCount (greatest hits)
+// thisMonth: order=date, publishedAfter=30 days ago
+// thisWeek:  order=date, publishedAfter=7 days ago
 export async function fetchTopVideos(
   channelId: string,
+  timeframe: Timeframe = 'allTime',
   maxResults: number = 20,
 ): Promise<string[]> {
   const key = getApiKey();
   if (!key) throw new Error('NO_API_KEY');
 
+  let order = 'viewCount';
+  let publishedAfterParam = '';
+
+  if (timeframe === 'thisMonth') {
+    order = 'date';
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    publishedAfterParam = `&publishedAfter=${d.toISOString()}`;
+  } else if (timeframe === 'thisWeek') {
+    order = 'date';
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    publishedAfterParam = `&publishedAfter=${d.toISOString()}`;
+  }
+
   const res = await fetch(
-    `${API_BASE}/search?part=snippet&channelId=${encodeURIComponent(channelId)}&order=viewCount&type=video&maxResults=${maxResults}&key=${key}`,
+    `${API_BASE}/search?part=snippet&channelId=${encodeURIComponent(channelId)}&order=${order}&type=video&maxResults=${maxResults}${publishedAfterParam}&key=${key}`,
   );
+  logQuota(`search (${timeframe}, max=${maxResults})`, 100);
 
   if (res.status === 403) throw new Error('QUOTA_EXCEEDED');
   if (!res.ok) throw new Error('NETWORK_ERROR');
@@ -71,10 +106,32 @@ export async function fetchTopVideos(
   return data.items.map((item: any) => item.id.videoId).filter(Boolean);
 }
 
-// ── Fetch video statistics ──────────────────────────────────
-export async function fetchVideoStats(
-  videoIds: string[],
-): Promise<Video[]> {
+// ── Fetch recent uploads (chronological) ────────────────────
+// Always uses order=date for the most recent N uploads
+export async function fetchRecentUploads(
+  channelId: string,
+  count: number = 20,
+): Promise<string[]> {
+  const key = getApiKey();
+  if (!key) throw new Error('NO_API_KEY');
+
+  const res = await fetch(
+    `${API_BASE}/search?part=snippet&channelId=${encodeURIComponent(channelId)}&order=date&type=video&maxResults=${count}&key=${key}`,
+  );
+  logQuota(`search (recent uploads, count=${count})`, 100);
+
+  if (res.status === 403) throw new Error('QUOTA_EXCEEDED');
+  if (!res.ok) throw new Error('NETWORK_ERROR');
+
+  const data = await res.json();
+  if (!data.items) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data.items.map((item: any) => item.id.videoId).filter(Boolean);
+}
+
+// ── Fetch video statistics + contentDetails ─────────────────
+export async function fetchVideoStats(videoIds: string[]): Promise<Video[]> {
   if (videoIds.length === 0) return [];
 
   const key = getApiKey();
@@ -84,8 +141,9 @@ export async function fetchVideoStats(
   const ids = videoIds.slice(0, 50).join(',');
 
   const res = await fetch(
-    `${API_BASE}/videos?part=snippet,statistics&id=${ids}&key=${key}`,
+    `${API_BASE}/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${key}`,
   );
+  logQuota(`videos (${videoIds.length} IDs)`, 1);
 
   if (res.status === 403) throw new Error('QUOTA_EXCEEDED');
   if (!res.ok) throw new Error('NETWORK_ERROR');
@@ -109,35 +167,60 @@ export async function fetchVideoStats(
     const likes = parseInt(item.statistics?.likeCount || '0', 10);
     const comments = parseInt(item.statistics?.commentCount || '0', 10);
     const engagement = calcEngagement(likes, comments, views);
-    const trending = calcTrendingScore(
-      engagement,
-      item.snippet.publishedAt,
+    const publishedAt = item.snippet.publishedAt;
+    const duration = item.contentDetails?.duration || '';
+
+    // Build a partial video for trending score calculation
+    const partialVideo = {
       views,
-      avgViews,
-    );
+      engagementRate: engagement,
+      publishedAt,
+    } as Video;
+    const trending = calcTrendingScore(partialVideo, avgViews);
 
     return {
       id: item.id,
       title: item.snippet.title,
+      // New fields
+      thumbnail:
+        item.snippet.thumbnails?.high?.url ||
+        item.snippet.thumbnails?.medium?.url ||
+        item.snippet.thumbnails?.default?.url ||
+        '',
+      views,
+      likes,
+      comments,
+      publishedAt,
+      duration,
+      url: `https://www.youtube.com/watch?v=${item.id}`,
+      engagementRate: engagement,
+      trendingScore: trending,
+      dayOfWeek: getDayOfWeek(publishedAt),
+      weekNumber: getWeekNumber(publishedAt),
+      // Backward-compat aliases
       thumbnailUrl:
         item.snippet.thumbnails?.high?.url ||
         item.snippet.thumbnails?.medium?.url ||
         item.snippet.thumbnails?.default?.url ||
         '',
-      publishedAt: item.snippet.publishedAt,
       viewCount: views,
       likeCount: likes,
       commentCount: comments,
-      engagementRate: engagement,
-      trendingScore: trending,
     } satisfies Video;
   });
 }
 
-// ── Orchestrator: analyzeChannel(url) ───────────────────────
+// ── Orchestrator: full dashboard data ───────────────────────
+// Fetches everything needed for a full dashboard load:
+//   1. Channel info
+//   2. Table videos for the given timeframe
+//   3. Recent 20 uploads (for charts) — only on initial load
+//   4. Extended 50 uploads (for Best Day) — only on initial load
 export async function analyzeChannel(
   url: string,
-): Promise<ChannelAnalysis> {
+  timeframe: Timeframe = 'allTime',
+  opts?: { skipCharts?: boolean },
+): Promise<DashboardData> {
   const parsed = parseYouTubeURL(url);
 
   if (!parsed.handle && !parsed.channelId) {
@@ -150,23 +233,92 @@ export async function analyzeChannel(
       ? await fetchChannelById(parsed.channelId)
       : await fetchChannelByHandle(parsed.handle!);
 
-    // 2. Fetch top video IDs
-    const videoIds = await fetchTopVideos(channel.id, 20);
+    // 2. Fetch table video IDs for current timeframe
+    const tableVideoIds = await fetchTopVideos(channel.id, timeframe);
+    const tableVideos = await fetchVideoStats(tableVideoIds);
 
-    // 3. Fetch video details + stats
-    const videos = await fetchVideoStats(videoIds);
+    // Sort table videos by views descending for time-filtered tabs
+    if (timeframe !== 'allTime') {
+      tableVideos.sort((a, b) => b.views - a.views);
+    }
 
-    return { channel, videos };
+    // 3 & 4. Fetch chart data (only on initial load, not on tab switch)
+    let recentVideos: Video[] = [];
+    let extendedVideos: Video[] = [];
+
+    if (!opts?.skipCharts) {
+      // Fetch recent 20 for charts
+      const recentIds = await fetchRecentUploads(channel.id, 20);
+      recentVideos = await fetchVideoStats(recentIds);
+      // Sort chronologically oldest → newest
+      recentVideos.sort(
+        (a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime(),
+      );
+
+      // Fetch extended 50 for Best Day analysis
+      const extendedIds = await fetchRecentUploads(channel.id, 50);
+      extendedVideos = await fetchVideoStats(extendedIds);
+      extendedVideos.sort(
+        (a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime(),
+      );
+    }
+
+    logQuota(
+      'Total for this call',
+      opts?.skipCharts
+        ? 102  // channel(1) + search(100) + videos(1)
+        : 304, // channel(1) + search×3(300) + videos×3(3)
+    );
+
+    return {
+      channel,
+      tableVideos,
+      recentVideos,
+      extendedVideos,
+      timeframe,
+      fetchedAt: new Date().toISOString(),
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'NETWORK_ERROR';
 
     // Fallback to demo data if API key missing or quota exceeded
     if (message === 'NO_API_KEY' || message === 'QUOTA_EXCEEDED') {
-      return getDemoData();
+      const demo = getDemoData();
+      return {
+        channel: demo.channel,
+        tableVideos: demo.videos,
+        recentVideos: [...demo.videos].sort(
+          (a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime(),
+        ),
+        extendedVideos: [...demo.videos].sort(
+          (a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime(),
+        ),
+        timeframe,
+        fetchedAt: new Date().toISOString(),
+      };
     }
 
     throw err;
   }
+}
+
+// ── Fetch table videos only (for tab switching) ─────────────
+// Lighter call: skips channel info and chart data
+export async function fetchTableVideosForTab(
+  channelId: string,
+  timeframe: Timeframe,
+): Promise<Video[]> {
+  const videoIds = await fetchTopVideos(channelId, timeframe);
+  const videos = await fetchVideoStats(videoIds);
+
+  // Sort by views descending for time-filtered tabs
+  if (timeframe !== 'allTime') {
+    videos.sort((a, b) => b.views - a.views);
+  }
+
+  logQuota(`Tab switch (${timeframe})`, 101);
+
+  return videos;
 }
 
 // ── Error message mapper ────────────────────────────────────
@@ -188,20 +340,43 @@ export function getErrorMessage(error: string): string {
 // ── Map raw API item → Channel ──────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapChannel(item: any, handle?: string): Channel {
+  const subscriberCount = parseInt(item.statistics?.subscriberCount || '0', 10);
+  const totalViews = parseInt(item.statistics?.viewCount || '0', 10);
+  const videoCount = parseInt(item.statistics?.videoCount || '0', 10);
+  const createdAt = item.snippet?.publishedAt || '';
+  const avatar =
+    item.snippet?.thumbnails?.high?.url ||
+    item.snippet?.thumbnails?.medium?.url ||
+    item.snippet?.thumbnails?.default?.url ||
+    '';
+
+  // Calculate estimated monthly views
+  const monthsActive = Math.max(
+    1,
+    Math.floor(
+      (Date.now() - new Date(createdAt).getTime()) / (30 * 24 * 60 * 60 * 1000),
+    ),
+  );
+  const estimatedMonthlyViews = Math.round(totalViews / monthsActive);
+
   return {
     id: item.id,
-    handle: handle || item.snippet?.customUrl || `@${item.snippet?.title}`,
     title: item.snippet?.title || '',
+    handle: handle || item.snippet?.customUrl || `@${item.snippet?.title}`,
+    // New fields
+    avatar,
+    subscribers: subscriberCount,
+    totalViews,
+    videoCount,
+    createdAt,
+    estimatedMonthlyViews,
+    verified: false, // YouTube API doesn't expose verification status directly
+    // Backward-compat aliases
     description: item.snippet?.description || '',
-    thumbnailUrl:
-      item.snippet?.thumbnails?.high?.url ||
-      item.snippet?.thumbnails?.medium?.url ||
-      item.snippet?.thumbnails?.default?.url ||
-      '',
-    subscriberCount: parseInt(item.statistics?.subscriberCount || '0', 10),
-    viewCount: parseInt(item.statistics?.viewCount || '0', 10),
-    videoCount: parseInt(item.statistics?.videoCount || '0', 10),
-    publishedAt: item.snippet?.publishedAt || '',
+    thumbnailUrl: avatar,
+    subscriberCount,
+    viewCount: totalViews,
+    publishedAt: createdAt,
   };
 }
 
@@ -213,14 +388,22 @@ export function getDemoData(): ChannelAnalysis {
 
   const channel: Channel = {
     id: 'UCX6OQ3DkcsbYNE6H8uQQuVA',
-    handle: '@MrBeast',
     title: 'MrBeast',
+    handle: '@MrBeast',
+    avatar:
+      'https://yt3.googleusercontent.com/ytc/AIdro_kX4G7Y9-L1y17K5B6mI8z2y6z0Xz3E_1w_y7M=s176-c-k-c0x00ffffff-no-rj',
+    subscribers: 342_000_000,
+    totalViews: 45_200_000_000,
+    videoCount: 847,
+    createdAt: '2012-02-20T00:00:00Z',
+    estimatedMonthlyViews: Math.round(45_200_000_000 / 157),
+    verified: true,
+    // Backward-compat
     description: 'SUBSCRIBE FOR A COOKIE!',
     thumbnailUrl:
       'https://yt3.googleusercontent.com/ytc/AIdro_kX4G7Y9-L1y17K5B6mI8z2y6z0Xz3E_1w_y7M=s176-c-k-c0x00ffffff-no-rj',
     subscriberCount: 342_000_000,
     viewCount: 45_200_000_000,
-    videoCount: 847,
     publishedAt: '2012-02-20T00:00:00Z',
   };
 
@@ -239,30 +422,44 @@ export function getDemoData(): ChannelAnalysis {
     { id: 'v10', title: 'I Survived 50 Hours In Antarctica', views: 35_100_000, likes: 1_300_000, comments: 61_000, daysAgo: 45, thumb: 'https://picsum.photos/seed/10/320/180' },
     { id: 'v11', title: '$1 vs $250,000 Vacation!', views: 32_700_000, likes: 1_200_000, comments: 57_000, daysAgo: 75, thumb: 'https://picsum.photos/seed/11/320/180' },
     { id: 'v12', title: 'I Spent 50 Hours In Solitary Confinement', views: 29_400_000, likes: 1_100_000, comments: 52_000, daysAgo: 105, thumb: 'https://picsum.photos/seed/12/320/180' },
-    { id: 'v13', title: 'Lamborghini vs World\'s Largest Shredder', views: 26_800_000, likes: 980_000, comments: 48_000, daysAgo: 135, thumb: 'https://picsum.photos/seed/13/320/180' },
+    { id: 'v13', title: "Lamborghini vs World's Largest Shredder", views: 26_800_000, likes: 980_000, comments: 48_000, daysAgo: 135, thumb: 'https://picsum.photos/seed/13/320/180' },
     { id: 'v14', title: "I Ate The World's Largest Slice Of Pizza", views: 24_500_000, likes: 890_000, comments: 44_000, daysAgo: 165, thumb: 'https://picsum.photos/seed/14/320/180' },
     { id: 'v15', title: 'I Bought Everything In 5 Stores', views: 22_100_000, likes: 810_000, comments: 40_000, daysAgo: 195, thumb: 'https://picsum.photos/seed/15/320/180' },
     { id: 'v16', title: 'Extreme $100,000 Game of Tag', views: 19_800_000, likes: 730_000, comments: 36_000, daysAgo: 7, thumb: 'https://picsum.photos/seed/16/320/180' },
     { id: 'v17', title: 'I Built 100 Houses And Gave Them Away', views: 17_500_000, likes: 650_000, comments: 32_000, daysAgo: 50, thumb: 'https://picsum.photos/seed/17/320/180' },
-    { id: 'v18', title: 'Anything You Can Carry, I\'ll Pay For', views: 15_200_000, likes: 570_000, comments: 28_000, daysAgo: 80, thumb: 'https://picsum.photos/seed/18/320/180' },
+    { id: 'v18', title: "Anything You Can Carry, I'll Pay For", views: 15_200_000, likes: 570_000, comments: 28_000, daysAgo: 80, thumb: 'https://picsum.photos/seed/18/320/180' },
     { id: 'v19', title: 'I Opened A Free Car Dealership', views: 13_600_000, likes: 500_000, comments: 25_000, daysAgo: 110, thumb: 'https://picsum.photos/seed/19/320/180' },
-    { id: 'v20', title: 'World\'s Most Dangerous Escape Room!', views: 12_100_000, likes: 440_000, comments: 22_000, daysAgo: 140, thumb: 'https://picsum.photos/seed/20/320/180' },
+    { id: 'v20', title: "World's Most Dangerous Escape Room!", views: 12_100_000, likes: 440_000, comments: 22_000, daysAgo: 140, thumb: 'https://picsum.photos/seed/20/320/180' },
   ];
 
   const videos: Video[] = videosRaw.map((v) => {
     const engagement = calcEngagement(v.likes, v.comments, v.views);
     const publishedAt = daysAgo(v.daysAgo);
-    const trending = calcTrendingScore(engagement, publishedAt, v.views, avgViews);
+    const partialVideo = {
+      views: v.views,
+      engagementRate: engagement,
+      publishedAt,
+    } as Video;
+    const trending = calcTrendingScore(partialVideo, avgViews);
     return {
       id: v.id,
       title: v.title,
-      thumbnailUrl: v.thumb,
+      thumbnail: v.thumb,
+      views: v.views,
+      likes: v.likes,
+      comments: v.comments,
       publishedAt,
+      duration: 'PT10M0S',
+      url: `https://www.youtube.com/watch?v=${v.id}`,
+      engagementRate: engagement,
+      trendingScore: trending,
+      dayOfWeek: getDayOfWeek(publishedAt),
+      weekNumber: getWeekNumber(publishedAt),
+      // Backward-compat
+      thumbnailUrl: v.thumb,
       viewCount: v.views,
       likeCount: v.likes,
       commentCount: v.comments,
-      engagementRate: engagement,
-      trendingScore: trending,
     };
   });
 
