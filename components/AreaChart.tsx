@@ -36,17 +36,35 @@ function trendPill(data: { views: number }[]) {
   );
 }
 
-export default function ViewsOverTime({ videos }: ViewsOverTimeProps) {
-  const chartData = [...videos]
+// Format date based on the overall span of the dataset
+function buildChartData(videos: Video[]) {
+  const sorted = [...videos]
     .sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime())
-    .slice(-20)
-    .map((v) => {
-      const d = new Date(v.publishedAt);
-      return {
-        date: `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`,
-        views: v.viewCount,
-      };
-    });
+    .slice(-20);
+
+  if (sorted.length === 0) return { data: [], longRange: false };
+
+  const oldest = new Date(sorted[0].publishedAt).getTime();
+  const newest = new Date(sorted[sorted.length - 1].publishedAt).getTime();
+  const spanDays = (newest - oldest) / (1000 * 60 * 60 * 24);
+  const longRange = spanDays > 180; // > 6 months → month-only labels
+
+  const data = sorted.map((v) => {
+    const d = new Date(v.publishedAt);
+    const month = d.toLocaleString('default', { month: 'short' });
+    const label = longRange ? month : `${month} ${d.getDate()}`;
+    return {
+      date: label,
+      views: v.views, // use new field name
+      fullDate: v.publishedAt,
+    };
+  });
+
+  return { data, longRange };
+}
+
+export default function ViewsOverTime({ videos }: ViewsOverTimeProps) {
+  const { data: chartData, longRange } = buildChartData(videos);
 
   const pill = trendPill(chartData);
 
@@ -58,10 +76,13 @@ export default function ViewsOverTime({ videos }: ViewsOverTimeProps) {
     );
   }
 
+  // Limit X-axis to max 7 ticks to avoid label overlap
+  const tickInterval = chartData.length <= 7 ? 0 : Math.floor(chartData.length / 6);
+
   return (
     <ChartCard
       title="Views Over Time"
-      subtitle="Is this competitor growing or declining?"
+      subtitle={longRange ? 'Monthly view trend across recent uploads' : 'Is this competitor growing or declining?'}
       insight={pill}
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -79,7 +100,7 @@ export default function ViewsOverTime({ videos }: ViewsOverTimeProps) {
             tickLine={false}
             tick={{ fontSize: 11, fill: '#71717A' }}
             dy={8}
-            interval="preserveStartEnd"
+            interval={tickInterval}
           />
           <YAxis
             axisLine={false}

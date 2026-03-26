@@ -1,30 +1,65 @@
-import Link from 'next/link';
-import { Play, Bell, Search } from 'lucide-react';
+'use client';
 
-export default function DashboardNav() {
+import { useState } from 'react';
+import Link from 'next/link';
+import { Play, Bell, Search, Loader2 } from 'lucide-react';
+
+interface DashboardNavProps {
+  onAnalyze?: (url: string) => void;
+  isLoading?: boolean;
+}
+
+export default function DashboardNav({ onAnalyze, isLoading }: DashboardNavProps) {
+  const [value, setValue] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!value.trim() || !onAnalyze) return;
+    onAnalyze(value.trim());
+  };
+
   return (
-    <nav className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
-      <div className="flex items-center gap-8">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="bg-indigo-500 p-1.5 rounded-md">
-            <Play className="w-4 h-4 text-white fill-white" />
-          </div>
-          <span className="font-bold text-xl text-white tracking-tight hidden sm:block">VidMetrics</span>
-        </Link>
-        
-        <div className="relative hidden md:block w-96">
+    <nav className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
+      {/* Logo */}
+      <Link href="/" className="flex items-center gap-2 shrink-0">
+        <div className="bg-indigo-500 p-1.5 rounded-md">
+          <Play className="w-4 h-4 text-white fill-white" />
+        </div>
+        <span className="font-bold text-xl text-white tracking-tight hidden sm:block">VidMetrics</span>
+      </Link>
+
+      {/* Channel URL analyze form — center of navbar */}
+      <form onSubmit={handleSubmit} className="flex-1 max-w-xl hidden md:flex gap-2">
+        <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-zinc-400" />
           </div>
           <input
             type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg leading-5 bg-[#0A0A0A] placeholder-zinc-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-            placeholder="Search channels..."
+            placeholder="Paste YouTube channel URL or @handle"
           />
         </div>
-      </div>
-      
-      <div className="flex items-center gap-4">
+        <button
+          type="submit"
+          disabled={isLoading || !value.trim()}
+          className="px-4 py-2 bg-white text-black text-sm font-semibold rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>Analyzing…</span>
+            </>
+          ) : (
+            'Analyze'
+          )}
+        </button>
+      </form>
+
+      {/* Right side: notification + avatar */}
+      <div className="flex items-center gap-4 shrink-0">
         <button className="p-2 text-zinc-400 hover:text-white transition-colors relative">
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full border-2 border-black"></span>
