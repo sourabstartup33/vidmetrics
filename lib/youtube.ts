@@ -16,24 +16,36 @@ const API_KEYS = [
   process.env.NEXT_PUBLIC_YOUTUBE_API_KEY_2,
   process.env.NEXT_PUBLIC_YOUTUBE_API_KEY_3,
   process.env.NEXT_PUBLIC_YOUTUBE_API_KEY_4,
-].filter(Boolean) as string[];
+  // Legacy single-key fallback — included so old setups still work
+  process.env.NEXT_PUBLIC_YOUTUBE_API_KEY,
+].filter(
+  // Reject undefined, empty strings, and placeholder values
+  (k): k is string =>
+    typeof k === 'string' && k.length > 20 && !k.startsWith('your_'),
+);
+
+// Deduplicate in case the same key appears more than once
+const UNIQUE_API_KEYS = [...new Set(API_KEYS)];
+
+// Always visible in DevTools — helps diagnose Vercel env bundling
+console.log(`[VidMetrics] API keys loaded: ${UNIQUE_API_KEYS.length}`);
 
 let currentKeyIndex = 0;
 
 function getCurrentKey(): string {
-  return API_KEYS[currentKeyIndex];
+  return UNIQUE_API_KEYS[currentKeyIndex];
 }
 
 function rotateKey(): boolean {
-  if (currentKeyIndex < API_KEYS.length - 1) {
+  if (currentKeyIndex < UNIQUE_API_KEYS.length - 1) {
     currentKeyIndex++;
     console.log(
-      `[YouTube API] Quota exceeded on key ${currentKeyIndex}. Rotating to key ${currentKeyIndex + 1}...`,
+      `[YouTube API] Quota exceeded on key ${currentKeyIndex}. Rotating to key ${currentKeyIndex + 1} of ${UNIQUE_API_KEYS.length}...`,
     );
-    return true; // successfully rotated
+    return true;
   }
   console.log('[YouTube API] All keys exhausted. Falling back to demo data.');
-  return false; // all keys exhausted
+  return false;
 }
 
 function logQuota(label: string, units: number) {
@@ -48,11 +60,12 @@ function logQuota(label: string, units: number) {
 // Throws the API error message for all other failure modes.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function youtubeRequest(url: string): Promise<any> {
-  if (API_KEYS.length === 0) {
+  if (UNIQUE_API_KEYS.length === 0) {
+    console.warn('[YouTube API] No API keys configured — using demo data.');
     throw new Error('NO_API_KEY');
   }
 
-  for (let attempt = 0; attempt < API_KEYS.length; attempt++) {
+  for (let attempt = 0; attempt < UNIQUE_API_KEYS.length; attempt++) {
     const key = getCurrentKey();
     const fullUrl = `${url}&key=${key}`;
 
