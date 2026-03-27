@@ -69,7 +69,13 @@ async function youtubeRequest(url: string): Promise<any> {
     const fullUrl = `${url}&key=${key}`;
 
     const response = await fetch(fullUrl);
-    const data = await response.json();
+
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('INVALID_RESPONSE');
+    }
 
     // Quota exceeded — try the next key
     if (

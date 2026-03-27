@@ -60,7 +60,12 @@ export async function generateAISummary(
     throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
   }
 
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error('INVALID_RESPONSE');
+  }
   const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   if (!text) throw new Error('EMPTY_RESPONSE');
   return text.trim();

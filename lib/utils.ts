@@ -116,6 +116,11 @@ export interface ParsedURL {
 export function parseYouTubeURL(input: string): ParsedURL {
   const trimmed = input.trim();
 
+  // Guard against excessively long inputs
+  if (trimmed.length === 0 || trimmed.length > 500) {
+    return {};
+  }
+
   // Direct @handle (no URL)
   if (/^@[\w.-]+$/.test(trimmed)) {
     return { handle: trimmed };
