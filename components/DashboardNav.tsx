@@ -19,7 +19,7 @@ export default function DashboardNav({ onAnalyze, isLoading }: DashboardNavProps
   };
 
   return (
-    <nav className="sticky top-0 z-40 bg-black border-b border-white/10">
+    <nav className="sticky top-0 z-40 bg-black/60 backdrop-blur-xl border-b border-white/10 supports-[backdrop-filter]:bg-black/40">
       {/* Row 1: Logo + right icons (always visible) */}
       <div className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}

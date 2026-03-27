@@ -27,7 +27,7 @@ function StatCard({ label, value, sublabel }: StatCardProps) {
 
 function SkeletonCard() {
   return (
-    <div className="bg-[#0A0A0A] rounded-xl p-5 border border-white/[0.08] animate-pulse"
+    <div className="bg-[#0A0A0A] rounded-xl p-5 border border-white/[0.08] animate-shimmer"
       style={{ borderTop: '2px solid rgba(99,102,241,0.15)' }}
     >
       <div className="h-2.5 w-24 bg-zinc-800 rounded mb-3" />

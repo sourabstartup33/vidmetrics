@@ -34,7 +34,7 @@ function TrendingDot({ score }: { score: number }) {
 
 function SkeletonRow() {
   return (
-    <tr className="border-b border-white/5 animate-pulse">
+    <tr className="border-b border-white/5 animate-shimmer">
       <td className="px-6 py-4"><div className="h-4 w-5 bg-zinc-800 rounded" /></td>
       <td className="px-6 py-4"><div className="w-24 h-14 bg-zinc-800 rounded-md" /></td>
       <td className="px-6 py-4">

@@ -58,22 +58,20 @@ function CustomTooltip({
 }) {
   if (!active || !payload?.length) return null;
   const { title, publishedAt, metricValue } = payload[0].payload;
-  const truncatedTitle = title.length > 40 ? title.slice(0, 40) + '…' : title;
+  const truncatedTitle = title.length > 50 ? title.slice(0, 50) + '…' : title;
+  
   return (
-    <div
-      style={{
-        backgroundColor: '#111',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 10,
-        padding: '10px 14px',
-        maxWidth: 260,
-      }}
-    >
-      <p style={{ color: '#A1A1AA', fontSize: 11, marginBottom: 6, lineHeight: 1.4 }}>{truncatedTitle}</p>
-      <p style={{ color: '#E4E4E7', fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
-        {METRIC_CONFIG[metric].format(metricValue)}
-      </p>
-      <p style={{ color: '#71717A', fontSize: 11 }}>{formatDate(publishedAt)}</p>
+    <div className="bg-black/70 backdrop-blur-md border border-white/10 rounded-xl p-3 sm:p-4 shadow-2xl max-w-[240px] sm:max-w-[300px]">
+      <div className="flex items-center gap-2 mb-1.5 justify-between">
+        <p className="text-white text-base font-bold tracking-tight">
+          {METRIC_CONFIG[metric].format(metricValue)}
+        </p>
+        <span className="text-[10px] uppercase tracking-wider font-semibold bg-white/10 text-zinc-300 px-1.5 py-0.5 rounded-sm">
+          {METRIC_CONFIG[metric].label}
+        </span>
+      </div>
+      <p className="text-zinc-300 text-sm mb-2 leading-snug">{truncatedTitle}</p>
+      <p className="text-zinc-500 text-xs font-medium">{formatDate(publishedAt)}</p>
     </div>
   );
 }
@@ -83,7 +81,7 @@ export default function PerformanceChart({ videos, loading }: PerformanceChartPr
 
   if (loading) {
     return (
-      <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-6 h-[340px] animate-pulse">
+      <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-6 h-[340px] animate-shimmer">
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="h-5 w-40 bg-zinc-800 rounded mb-2" />
