@@ -107,14 +107,14 @@ function getCachedData(handle: string): DashboardData | null {
   // localStorage is browser-only
   if (typeof window === 'undefined') return null;
   try {
-    const cached = localStorage.getItem(`vidmetrics_v2_${handle.toLowerCase()}`);
+    const cached = localStorage.getItem(`vidmetrics_v3_${handle.toLowerCase()}`);
     if (!cached) return null;
 
     const entry: CacheEntry = JSON.parse(cached);
     const age = Date.now() - entry.timestamp;
 
     if (age > CACHE_DURATION) {
-      localStorage.removeItem(`vidmetrics_v2_${handle.toLowerCase()}`);
+      localStorage.removeItem(`vidmetrics_v3_${handle.toLowerCase()}`);
       return null;
     }
 
@@ -132,7 +132,7 @@ function setCachedData(handle: string, data: DashboardData): void {
   try {
     const entry: CacheEntry = { data, timestamp: Date.now() };
     localStorage.setItem(
-      `vidmetrics_v2_${handle.toLowerCase()}`,
+      `vidmetrics_v3_${handle.toLowerCase()}`,
       JSON.stringify(entry),
     );
   } catch {
@@ -328,7 +328,10 @@ export async function analyzeChannel(
     const tableVideoIds = await fetchTopVideos(channel.id, timeframe);
     const tableVideos = await fetchVideoStats(tableVideoIds);
 
-    if (timeframe !== 'allTime') {
+    if (timeframe === 'Latest') {
+      // Latest: newest first
+      tableVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    } else if (timeframe !== 'allTime') {
       tableVideos.sort((a, b) => b.views - a.views);
     }
 
@@ -395,7 +398,9 @@ export async function fetchTableVideosForTab(
   const videoIds = await fetchTopVideos(channelId, timeframe);
   const videos = await fetchVideoStats(videoIds);
 
-  if (timeframe !== 'allTime' && timeframe !== 'Latest') {
+  if (timeframe === 'Latest') {
+    videos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+  } else if (timeframe !== 'allTime') {
     videos.sort((a, b) => b.views - a.views);
   }
 

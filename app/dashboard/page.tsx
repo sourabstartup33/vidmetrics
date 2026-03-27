@@ -273,7 +273,11 @@ function DashboardContent() {
                       <QuickStats videos={tableVideos} loading={tabLoading} />
 
                       {/* BLOCK 3: Video Table */}
-                      <VideoTable videos={tableVideos} loading={tabLoading} />
+                      <VideoTable
+                        videos={tableVideos}
+                        loading={tabLoading}
+                        channelUrl={channel ? `https://www.youtube.com/${channel.handle}/videos` : undefined}
+                      />
                     </>
                   )}
                 </div>

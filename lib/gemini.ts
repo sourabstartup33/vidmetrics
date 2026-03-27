@@ -2,7 +2,7 @@ import { Video, Insight } from '@/types';
 import { formatNumber } from '@/lib/utils';
 
 const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 // ── Build a compact prompt from video + insight data ──────────
 function buildPrompt(videos: Video[], insights: Insight[]): string {

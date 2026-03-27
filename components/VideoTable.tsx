@@ -12,6 +12,7 @@ const PAGE_SIZE = 10;
 interface VideoTableProps {
   videos: Video[];
   loading?: boolean;
+  channelUrl?: string;
 }
 
 function TrendingDot({ score }: { score: number }) {
@@ -51,7 +52,7 @@ function SkeletonRow() {
   );
 }
 
-export default function VideoTable({ videos, loading = false }: VideoTableProps) {
+export default function VideoTable({ videos, loading = false, channelUrl }: VideoTableProps) {
   const [page, setPage] = useState(1);
 
   // Reset to page 1 whenever the dataset changes
@@ -157,6 +158,18 @@ export default function VideoTable({ videos, loading = false }: VideoTableProps)
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+        )}
+
+        {channelUrl && (
+          <a
+            href={channelUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            See All on YouTube
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
         )}
       </div>
     </div>
