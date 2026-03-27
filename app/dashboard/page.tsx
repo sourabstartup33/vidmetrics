@@ -216,13 +216,13 @@ function DashboardContent() {
               )}
 
               {/* Tab switcher */}
-              <div className="border-b border-white/10 mb-8 overflow-x-auto scrollbar-hide">
-                <div className="flex items-center gap-8">
+              <div className="border-b border-white/10 mb-8">
+                <div className="flex">
                   {(['overview', 'intelligence'] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`py-4 text-sm font-semibold uppercase tracking-wider whitespace-nowrap transition-colors relative ${
+                      className={`flex-1 sm:flex-initial py-4 text-sm font-semibold uppercase tracking-wider whitespace-nowrap transition-colors relative min-h-[44px] sm:mr-8 ${
                         activeTab === tab ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
                       }`}
                     >
@@ -240,22 +240,24 @@ function DashboardContent() {
                 <div className="animate-in fade-in duration-200 space-y-8">
 
                   {/* Time filter bar */}
-                  <div className="flex items-center gap-2">
-                    {TIME_FILTERS.map(t => (
-                      <button
-                        key={t}
-                        onClick={() => handleTimeframeChange(t)}
-                        disabled={tabLoading}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50 ${
-                          timeframe === t
-                            ? 'bg-indigo-500 text-white'
-                            : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                    {tabLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin ml-1" />}
+                  <div className="overflow-x-auto -mx-2 px-2 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+                    <div className="flex items-center gap-2">
+                      {TIME_FILTERS.map(t => (
+                        <button
+                          key={t}
+                          onClick={() => handleTimeframeChange(t)}
+                          disabled={tabLoading}
+                          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50 min-h-[44px] ${
+                            timeframe === t
+                              ? 'bg-indigo-500 text-white'
+                              : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                      {tabLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin ml-1" />}
+                    </div>
                   </div>
 
                   {/* Empty state for time-filtered tabs with no results */}

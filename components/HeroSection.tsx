@@ -36,7 +36,7 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative pt-40 pb-20 overflow-hidden min-h-screen flex flex-col items-center justify-center bg-black">
+    <section className="relative pt-24 sm:pt-40 pb-20 overflow-hidden min-h-screen flex flex-col items-center justify-center bg-black">
       {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div 
@@ -100,7 +100,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-          className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 text-gradient"
+          className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 text-gradient"
         >
           The new standard for <br className="hidden md:block" />YouTube analytics.
         </motion.h1>
@@ -109,7 +109,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-          className="text-lg md:text-xl text-zinc-400 mb-10 max-w-2xl mx-auto tracking-tight"
+          className="text-base sm:text-lg md:text-xl text-zinc-400 mb-10 max-w-2xl mx-auto tracking-tight px-2"
         >
           Track competitors, surface viral trends, and make data-driven decisions at the speed of thought. Built for creators who treat their channel like a business.
         </motion.p>
@@ -121,7 +121,7 @@ export default function HeroSection() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
           className="mb-8 max-w-2xl mx-auto"
         >
-          <form onSubmit={handleAnalyze} className="flex gap-2">
+          <form onSubmit={handleAnalyze} className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 text-zinc-400" />
@@ -136,7 +136,7 @@ export default function HeroSection() {
             </div>
             <button
               type="submit"
-              className="px-6 py-4 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-all text-sm flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] whitespace-nowrap"
+              className="w-full sm:w-auto px-6 py-4 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-all text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] whitespace-nowrap min-h-[44px]"
             >
               Analyze <ArrowRight className="w-4 h-4" />
             </button>
@@ -165,12 +165,12 @@ export default function HeroSection() {
         </motion.div>
       </div>
 
-      {/* Dashboard Preview */}
+      {/* Dashboard Preview — Desktop only */}
       <motion.div 
         initial={{ opacity: 0, y: 40, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
-        className="mt-24 w-full max-w-5xl mx-auto px-4 relative z-10 perspective-[2000px]"
+        className="mt-24 w-full max-w-5xl mx-auto px-4 relative z-10 perspective-[2000px] hidden sm:block"
         style={{ transformOrigin: 'top center', marginBottom: '-10%' }}
       >
         <div className="rounded-xl border border-white/10 bg-[#1C1C1C] shadow-2xl shadow-indigo-500/20 overflow-hidden flex flex-col transform scale-[0.85] md:scale-90 lg:scale-[0.85] origin-top">
@@ -291,6 +291,29 @@ export default function HeroSection() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Mobile-only simplified metric pills */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
+        className="mt-12 w-full max-w-sm mx-auto px-4 relative z-10 sm:hidden"
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between px-5 py-3.5 rounded-xl border border-white/10 bg-white/[0.03]">
+            <span className="text-zinc-400 text-sm">Subscribers</span>
+            <span className="text-white font-bold text-lg">473M</span>
+          </div>
+          <div className="flex items-center justify-between px-5 py-3.5 rounded-xl border border-white/10 bg-white/[0.03]">
+            <span className="text-zinc-400 text-sm">Total Views</span>
+            <span className="text-white font-bold text-lg">115.4B</span>
+          </div>
+          <div className="flex items-center justify-between px-5 py-3.5 rounded-xl border border-white/10 bg-white/[0.03]">
+            <span className="text-zinc-400 text-sm">Videos</span>
+            <span className="text-white font-bold text-lg">847</span>
           </div>
         </div>
       </motion.div>

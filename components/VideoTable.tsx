@@ -69,16 +69,16 @@ export default function VideoTable({ videos, loading = false, channelUrl }: Vide
         <table className="w-full text-left border-collapse min-w-[900px]">
           <thead>
             <tr className="bg-[#111111] border-b border-white/10 text-xs uppercase tracking-widest text-zinc-500 font-semibold">
-              <th className="px-6 py-4">#</th>
-              <th className="px-6 py-4">Thumbnail</th>
-              <th className="px-6 py-4">Title</th>
-              <th className="px-6 py-4">Views</th>
-              <th className="px-6 py-4">Likes</th>
-              <th className="px-6 py-4">Comments</th>
-              <th className="px-6 py-4">Engagement</th>
-              <th className="px-6 py-4">Trending</th>
-              <th className="px-6 py-4">Published</th>
-              <th className="px-6 py-4">Watch</th>
+              <th className="px-4 sm:px-6 py-4">#</th>
+              <th className="px-4 sm:px-6 py-4">Thumbnail</th>
+              <th className="px-4 sm:px-6 py-4">Title</th>
+              <th className="px-4 sm:px-6 py-4">Views</th>
+              <th className="px-4 sm:px-6 py-4">Likes</th>
+              <th className="px-4 sm:px-6 py-4 hidden sm:table-cell">Comments</th>
+              <th className="px-4 sm:px-6 py-4">Engagement</th>
+              <th className="px-4 sm:px-6 py-4">Trending</th>
+              <th className="px-4 sm:px-6 py-4">Published</th>
+              <th className="px-4 sm:px-6 py-4">Watch</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -86,9 +86,9 @@ export default function VideoTable({ videos, loading = false, channelUrl }: Vide
               ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
               : pageVideos.map((video, index) => (
                   <tr key={video.id} className="hover:bg-white/5 transition-colors group border-b border-white/5">
-                    <td className="px-6 py-4 text-sm font-medium text-zinc-500">{start + index + 1}</td>
-                    <td className="px-6 py-4">
-                      <div className="w-24 h-14 bg-zinc-800 rounded-md overflow-hidden relative">
+                    <td className="px-4 sm:px-6 py-4 text-sm font-medium text-zinc-500">{start + index + 1}</td>
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="w-16 h-10 sm:w-24 sm:h-14 bg-zinc-800 rounded-md overflow-hidden relative">
                         <Image
                           src={video.thumbnailUrl}
                           alt={video.title}
@@ -100,20 +100,20 @@ export default function VideoTable({ videos, loading = false, channelUrl }: Vide
                         />
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4">
                       <p className="text-sm font-bold text-white line-clamp-2 max-w-xs">{video.title}</p>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-white">{formatNumber(video.views)}</td>
-                    <td className="px-6 py-4 text-sm text-zinc-400">{formatNumber(video.likes)}</td>
-                    <td className="px-6 py-4 text-sm text-zinc-400">{formatNumber(video.comments)}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4 text-sm font-medium text-white">{formatNumber(video.views)}</td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-zinc-400">{formatNumber(video.likes)}</td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-zinc-400 hidden sm:table-cell">{formatNumber(video.comments)}</td>
+                    <td className="px-4 sm:px-6 py-4">
                       <EngagementBadge rate={`${video.engagementRate}%`} />
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4">
                       <TrendingDot score={video.trendingScore} />
                     </td>
-                    <td className="px-6 py-4 text-sm text-zinc-500 whitespace-nowrap">{formatDate(video.publishedAt)}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4 text-sm text-zinc-500 whitespace-nowrap">{formatDate(video.publishedAt)}</td>
+                    <td className="px-4 sm:px-6 py-4">
                       <a
                         href={video.url}
                         target="_blank"
@@ -130,7 +130,7 @@ export default function VideoTable({ videos, loading = false, channelUrl }: Vide
       </div>
 
       {/* Footer: count + pagination */}
-      <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between bg-[#0A0A0A] gap-4 flex-wrap">
+      <div className="px-4 sm:px-6 py-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between bg-[#0A0A0A] gap-4 flex-wrap">
         <p className="text-sm text-zinc-500">
           Showing{' '}
           <span className="font-semibold text-white">{videos.length > 0 ? start + 1 : 0}–{end}</span>

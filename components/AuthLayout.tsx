@@ -11,7 +11,7 @@ interface AuthLayoutProps {
 export default function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   return (
     <div className="min-h-screen flex bg-black text-white">
-      {/* Left side - Branding */}
+      {/* Left side - Branding (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#050505] border-r border-white/5 flex-col justify-between p-12 relative overflow-hidden">
         {/* Animated background pattern */}
         <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)]"></div>
@@ -52,8 +52,18 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
       </div>
       
       {/* Right side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-black">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-8 bg-black">
         <div className="w-full max-w-sm">
+          {/* Mobile-only logo */}
+          <div className="lg:hidden mb-8 flex justify-center">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="bg-white p-1.5 rounded-md">
+                <Play className="w-4 h-4 text-black fill-black" />
+              </div>
+              <span className="font-semibold text-xl text-white tracking-tight">VidMetrics</span>
+            </Link>
+          </div>
+          
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">{title}</h2>
             <p className="text-zinc-400 text-sm">{subtitle}</p>

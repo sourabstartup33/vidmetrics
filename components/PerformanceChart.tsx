@@ -147,7 +147,7 @@ export default function PerformanceChart({ videos, loading }: PerformanceChartPr
       </div>
 
       {/* Chart */}
-      <div className="h-[220px]">
+      <div className="h-[200px] sm:h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
             <defs>
@@ -163,7 +163,7 @@ export default function PerformanceChart({ videos, loading }: PerformanceChartPr
               tickLine={false}
               tick={{ fontSize: 10, fill: '#71717A' }}
               dy={8}
-              interval={Math.floor(chartData.length / 6)}
+              interval={'preserveStartEnd'}
             />
             <YAxis
               axisLine={false}
