@@ -1,5 +1,4 @@
-// ── Timeframe ────────────────────────────────────────────────
-export type Timeframe = 'allTime' | 'thisMonth' | 'thisWeek';
+export type Timeframe = 'allTime' | 'thisMonth' | 'thisWeek' | 'Latest' | '7D' | '28D' | '3M' | '1Y';
 
 // ── Video ────────────────────────────────────────────────────
 export interface Video {

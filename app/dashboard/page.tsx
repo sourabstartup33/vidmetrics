@@ -10,63 +10,42 @@ import PerformanceChart from '@/components/PerformanceChart';
 import QuickStats from '@/components/QuickStats';
 import IntelligenceBrief from '@/components/IntelligenceBrief';
 import EmptyState from '@/components/EmptyState';
-import { Channel, Video, Insight } from '@/types';
-import { analyzeChannel, fetchTopVideos, fetchVideoStats, getErrorMessage } from '@/lib/youtube';
+import { Channel, Video, Insight, Timeframe } from '@/types';
+import { analyzeChannel, fetchTopVideos, fetchVideoStats, getErrorMessage, fetchTableVideosForTab } from '@/lib/youtube';
 import { generateInsights } from '@/lib/insights';
 
 type TabOption = 'overview' | 'intelligence';
-// 'Latest' = most recent 20 uploads (default). Time tabs fetch API-filtered results.
-type TimeFilter = 'Latest' | '7D' | '28D' | '3M' | '1Y';
-
-const TIMEFRAME_DAYS: Record<Exclude<TimeFilter, 'Latest'>, number> = {
-  '7D': 7,
-  '28D': 28,
-  '3M': 90,
-  '1Y': 365,
-};
 
 function DashboardContent() {
   const searchParams = useSearchParams();
 
   // ── Core state ───────────────────────────────────────────────
-  const [channel,      setChannel]      = useState<Channel | null>(null);
-  const [recentVideos, setRecentVideos] = useState<Video[]>([]);   // latest 20 uploads
-  const [tabVideos,    setTabVideos]    = useState<Video[]>([]);   // time-filtered videos
-  const [insights,     setInsights]     = useState<Insight[]>([]);
-  const [loading,      setLoading]      = useState(false);
-  const [tabLoading,   setTabLoading]   = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
-  const [inputError,   setInputError]   = useState('');
+  const [channel,        setChannel]        = useState<Channel | null>(null);
+  const [recentVideos,   setRecentVideos]   = useState<Video[]>([]);   // latest 20 uploads
+  const [extendedVideos, setExtendedVideos] = useState<Video[]>([]);   // latest 50 uploads
+  const [tableVideos,    setTableVideos]    = useState<Video[]>([]);   // time-filtered videos
+  const [insights,       setInsights]       = useState<Insight[]>([]);
+  const [loading,        setLoading]        = useState(false);
+  const [tabLoading,     setTabLoading]     = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
+  const [inputError,     setInputError]     = useState('');
   const [isDemoMode,   setIsDemoMode]   = useState(false);
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(false);
   const [lastFetchUrl, setLastFetchUrl] = useState('');
 
   // ── Tab / time-filter state ──────────────────────────────────
   const [activeTab,  setActiveTab]  = useState<TabOption>('overview');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('Latest');
+  const [timeframe, setTimeframe]   = useState<Timeframe>('Latest');
 
   // Per-channel cache for each time filter tab
-  const tabCache = useRef<Partial<Record<TimeFilter, Video[]>>>({});
+  const tabCache = useRef<Partial<Record<Timeframe, Video[]>>>({});
 
-  // ── Videos currently shown ───────────────────────────────────
-  // For 'Latest', use recentVideos (already fetched from analyzeChannel).
-  // For time tabs, use tabVideos (fetched on demand).
-  const activeVideos = timeFilter === 'Latest' ? recentVideos : tabVideos;
-
-  // Chart: chronological (oldest → newest) — correct X axis direction
+  // Chart: chronological (oldest → newest)
   const chartVideos = useMemo(
-    () => [...activeVideos].sort(
+    () => [...tableVideos].sort(
       (a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()
     ),
-    [activeVideos],
-  );
-
-  // Table: newest first
-  const tableVideos = useMemo(
-    () => [...activeVideos].sort(
-      (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-    ),
-    [activeVideos],
+    [tableVideos],
   );
 
   // ── Full channel fetch ───────────────────────────────────────
@@ -75,14 +54,19 @@ function DashboardContent() {
     setError(null);
     setInputError('');
     setLastFetchUrl(url);
-    setTimeFilter('Latest');
+    setTimeframe('Latest');
     tabCache.current = {};
 
     try {
-      const result = await analyzeChannel(url, 'allTime');
+      const result = await analyzeChannel(url, 'Latest');
       setChannel(result.channel);
       setRecentVideos(result.recentVideos);
-      setTabVideos([]);
+      setExtendedVideos(result.extendedVideos);
+
+      // Initialize table with 'Latest' timeframe videos
+      setTableVideos(result.tableVideos);
+      tabCache.current['Latest'] = result.tableVideos;
+
       setInsights(generateInsights(result));
       setIsDemoMode(isDemo);
       document.title = `${result.channel.title} — VidMetrics`;
@@ -90,7 +74,8 @@ function DashboardContent() {
       const msg = err instanceof Error ? err.message : 'NETWORK_ERROR';
       setChannel(null);
       setRecentVideos([]);
-      setTabVideos([]);
+      setExtendedVideos([]);
+      setTableVideos([]);
       setInsights([]);
       if (msg === 'INVALID_URL') {
         setInputError('Please enter a valid YouTube channel URL');
@@ -105,46 +90,25 @@ function DashboardContent() {
   }, []);
 
   // ── Time-filter tab fetch ─────────────────────────────────────
-  const doTabFetch = useCallback(async (t: TimeFilter) => {
+  const handleTimeframeChange = useCallback(async (newTimeframe: Timeframe) => {
     if (!channel) return;
-
-    // 'Latest' always uses already-fetched recentVideos
-    if (t === 'Latest') {
-      setTimeFilter('Latest');
-      setTabVideos([]);
-      return;
-    }
+    
+    setTimeframe(newTimeframe);
 
     // Cache hit
-    if (tabCache.current[t]) {
-      setTabVideos(tabCache.current[t]!);
-      setTimeFilter(t);
+    if (tabCache.current[newTimeframe]) {
+      setTableVideos(tabCache.current[newTimeframe]!);
       return;
     }
 
     setTabLoading(true);
     try {
-      let videos: Video[];
-      const days = TIMEFRAME_DAYS[t];
-      if (t === '7D' || t === '28D') {
-        const ids = await fetchTopVideos(
-          channel.id,
-          t === '7D' ? 'thisWeek' : 'thisMonth',
-          50,
-        );
-        videos = await fetchVideoStats(ids);
-      } else {
-        // 3M / 1Y: fetch 50 by date, filter by cutoff
-        const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-        const ids = await fetchTopVideos(channel.id, 'allTime', 50);
-        const all = await fetchVideoStats(ids);
-        videos = all.filter((v) => new Date(v.publishedAt) > cutoff);
-      }
-      tabCache.current[t] = videos;
-      setTabVideos(videos);
-      setTimeFilter(t);
-    } catch {
-      // keep current data on error
+      const videos = await fetchTableVideosForTab(channel.id, newTimeframe);
+        
+      tabCache.current[newTimeframe] = videos;
+      setTableVideos(videos);
+    } catch (err) {
+      console.error('Tab fetch failed:', err);
     } finally {
       setTabLoading(false);
     }
@@ -164,7 +128,7 @@ function DashboardContent() {
     doFetch(url, false);
   }, [doFetch]);
 
-  const TIME_FILTERS: TimeFilter[] = ['Latest', '7D', '28D', '3M', '1Y'];
+  const TIME_FILTERS: Timeframe[] = ['Latest', '7D', '28D', '3M', '1Y'];
 
   return (
     <div className="min-h-screen flex flex-col bg-black text-white selection:bg-indigo-500/30 font-sans">
@@ -275,10 +239,10 @@ function DashboardContent() {
                     {TIME_FILTERS.map(t => (
                       <button
                         key={t}
-                        onClick={() => doTabFetch(t)}
+                        onClick={() => handleTimeframeChange(t)}
                         disabled={tabLoading}
                         className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50 ${
-                          timeFilter === t
+                          timeframe === t
                             ? 'bg-indigo-500 text-white'
                             : 'text-zinc-400 hover:text-white hover:bg-white/5'
                         }`}
@@ -290,22 +254,23 @@ function DashboardContent() {
                   </div>
 
                   {/* Empty state for time-filtered tabs with no results */}
-                  {!tabLoading && timeFilter !== 'Latest' && tabVideos.length === 0 ? (
+                  {!tabLoading && tableVideos.length === 0 ? (
                     <div className="bg-[#0A0A0A] rounded-xl border border-white/10">
                       <EmptyState
                         icon="📭"
-                        title="No videos in this period"
+                        title="No videos found in this time period"
                         message="No uploads found in this time range"
-                        action={{ label: 'View Latest', onClick: () => doTabFetch('Latest') }}
+                        action={{ label: 'View Latest', onClick: () => handleTimeframeChange('Latest') }}
                       />
                     </div>
                   ) : (
                     <>
                       {/* BLOCK 1: Performance Chart */}
-                      <PerformanceChart videos={chartVideos} loading={tabLoading} />
+                      {/* Does not show skeleton so it seamlessly switches */}
+                      <PerformanceChart videos={chartVideos} loading={false} />
 
                       {/* BLOCK 2: Quick Stats */}
-                      <QuickStats videos={activeVideos} loading={tabLoading} />
+                      <QuickStats videos={tableVideos} loading={tabLoading} />
 
                       {/* BLOCK 3: Video Table */}
                       <VideoTable videos={tableVideos} loading={tabLoading} />
@@ -317,7 +282,9 @@ function DashboardContent() {
               {/* ══ TAB 2: INTELLIGENCE BRIEF ════════════════════════ */}
               {activeTab === 'intelligence' && (
                 <IntelligenceBrief
-                  videos={recentVideos}
+                  recentVideos={recentVideos}
+                  extendedVideos={extendedVideos}
+                  channel={channel}
                   insights={insights}
                   loading={false}
                 />

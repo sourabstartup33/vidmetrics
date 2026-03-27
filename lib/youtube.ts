@@ -107,14 +107,14 @@ function getCachedData(handle: string): DashboardData | null {
   // localStorage is browser-only
   if (typeof window === 'undefined') return null;
   try {
-    const cached = localStorage.getItem(`vidmetrics_${handle.toLowerCase()}`);
+    const cached = localStorage.getItem(`vidmetrics_v2_${handle.toLowerCase()}`);
     if (!cached) return null;
 
     const entry: CacheEntry = JSON.parse(cached);
     const age = Date.now() - entry.timestamp;
 
     if (age > CACHE_DURATION) {
-      localStorage.removeItem(`vidmetrics_${handle.toLowerCase()}`);
+      localStorage.removeItem(`vidmetrics_v2_${handle.toLowerCase()}`);
       return null;
     }
 
@@ -132,7 +132,7 @@ function setCachedData(handle: string, data: DashboardData): void {
   try {
     const entry: CacheEntry = { data, timestamp: Date.now() };
     localStorage.setItem(
-      `vidmetrics_${handle.toLowerCase()}`,
+      `vidmetrics_v2_${handle.toLowerCase()}`,
       JSON.stringify(entry),
     );
   } catch {
@@ -164,21 +164,33 @@ export async function fetchChannelById(id: string): Promise<Channel> {
 // ── Fetch video IDs with timeframe support ──────────────────
 export async function fetchTopVideos(
   channelId: string,
-  timeframe: Timeframe = 'allTime',
+  timeframe: Timeframe = 'Latest',
   maxResults: number = 20,
 ): Promise<string[]> {
   let order = 'viewCount';
   let publishedAfterParam = '';
 
-  if (timeframe === 'thisMonth') {
+  if (timeframe === 'Latest') {
+    order = 'date';
+  } else if (timeframe === 'thisMonth' || timeframe === '28D') {
     order = 'date';
     const d = new Date();
-    d.setDate(d.getDate() - 30);
+    d.setDate(d.getDate() - (timeframe === 'thisMonth' ? 30 : 28));
     publishedAfterParam = `&publishedAfter=${d.toISOString()}`;
-  } else if (timeframe === 'thisWeek') {
+  } else if (timeframe === 'thisWeek' || timeframe === '7D') {
     order = 'date';
     const d = new Date();
     d.setDate(d.getDate() - 7);
+    publishedAfterParam = `&publishedAfter=${d.toISOString()}`;
+  } else if (timeframe === '3M') {
+    order = 'date';
+    const d = new Date();
+    d.setDate(d.getDate() - 90);
+    publishedAfterParam = `&publishedAfter=${d.toISOString()}`;
+  } else if (timeframe === '1Y') {
+    order = 'date';
+    const d = new Date();
+    d.setDate(d.getDate() - 365);
     publishedAfterParam = `&publishedAfter=${d.toISOString()}`;
   }
 
@@ -287,7 +299,7 @@ function buildDemoResult(timeframe: Timeframe): DashboardData {
 // ── Orchestrator: full dashboard data ───────────────────────
 export async function analyzeChannel(
   url: string,
-  timeframe: Timeframe = 'allTime',
+  timeframe: Timeframe = 'Latest',
   opts?: { skipCharts?: boolean },
 ): Promise<DashboardData> {
   const parsed = parseYouTubeURL(url);
@@ -383,7 +395,7 @@ export async function fetchTableVideosForTab(
   const videoIds = await fetchTopVideos(channelId, timeframe);
   const videos = await fetchVideoStats(videoIds);
 
-  if (timeframe !== 'allTime') {
+  if (timeframe !== 'allTime' && timeframe !== 'Latest') {
     videos.sort((a, b) => b.views - a.views);
   }
 
