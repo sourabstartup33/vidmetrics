@@ -4,23 +4,35 @@ import { ChevronRight, Play, Lock, Search, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { useMemo, useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 
 export default function HeroSection() {
   const router = useRouter();
   const [channelUrl, setChannelUrl] = useState('');
   const [inputError, setInputError] = useState('');
 
-  const particles = useMemo(() => {
-    return Array.from({ length: 30 }).map(() => ({
-      x: `${Math.random() * 100}vw`,
-      yStart: `${Math.random() * 100 + 20}vh`,
-      yEnd: `-${Math.random() * 20 + 10}vh`,
-      opacity: Math.random() * 0.3 + 0.1,
-      scale: Math.random() * 0.5 + 0.5,
-      duration: Math.random() * 15 + 15,
-      delay: Math.random() * 10,
-    }));
+  const [particles, setParticles] = useState<Array<{
+    x: string;
+    yStart: string;
+    yEnd: string;
+    opacity: number;
+    scale: number;
+    duration: number;
+    delay: number;
+  }>>([]);
+
+  useEffect(() => {
+    setParticles(
+      Array.from({ length: 30 }).map(() => ({
+        x: `${Math.random() * 100}vw`,
+        yStart: `${Math.random() * 100 + 20}vh`,
+        yEnd: `-${Math.random() * 20 + 10}vh`,
+        opacity: Math.random() * 0.3 + 0.1,
+        scale: Math.random() * 0.5 + 0.5,
+        duration: Math.random() * 15 + 15,
+        delay: Math.random() * 10,
+      }))
+    );
   }, []);
 
   const handleAnalyze = (e: FormEvent) => {
