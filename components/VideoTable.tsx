@@ -135,6 +135,33 @@ export default function VideoTable({ videos, loading = false, channelUrl }: Vide
 
   return (
     <div className="bg-[#0A0A0A] rounded-xl border border-white/10 shadow-sm overflow-hidden">
+      {/* Table header bar with action buttons */}
+      <div className="px-4 sm:px-6 py-3 border-b border-white/10 flex items-center justify-between gap-4 bg-[#111111]">
+        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Video Library</p>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={exportToCSV}
+            disabled={videos.length === 0}
+            className="flex items-center gap-1.5 text-sm font-semibold text-zinc-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export CSV
+          </button>
+
+          {channelUrl && (
+            <a
+              href={channelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              See All on YouTube
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[900px]">
           <thead>
@@ -266,29 +293,6 @@ export default function VideoTable({ videos, loading = false, channelUrl }: Vide
             </button>
           </div>
         )}
-
-        <div className="flex items-center gap-4 ml-auto">
-          <button
-            onClick={exportToCSV}
-            disabled={videos.length === 0}
-            className="flex items-center gap-1.5 text-sm font-semibold text-zinc-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
-          </button>
-          
-          {channelUrl && (
-            <a
-              href={channelUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
-            >
-              See All on YouTube
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
-        </div>
       </div>
     </div>
   );
