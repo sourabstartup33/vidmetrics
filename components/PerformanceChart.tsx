@@ -121,7 +121,7 @@ export default function PerformanceChart({ videos, loading }: PerformanceChartPr
     }));
 
   return (
-    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-6">
+    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-4 sm:p-6">
       {/* Header row — always stays in a single row, wraps gracefully */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>

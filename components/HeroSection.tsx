@@ -295,28 +295,6 @@ export default function HeroSection() {
         </div>
       </motion.div>
 
-      {/* Mobile-only simplified metric pills */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
-        className="mt-12 w-full max-w-sm mx-auto px-4 relative z-10 sm:hidden"
-      >
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between px-5 py-3.5 rounded-xl border border-white/10 bg-white/[0.03]">
-            <span className="text-zinc-400 text-sm">Subscribers</span>
-            <span className="text-white font-bold text-lg">473M</span>
-          </div>
-          <div className="flex items-center justify-between px-5 py-3.5 rounded-xl border border-white/10 bg-white/[0.03]">
-            <span className="text-zinc-400 text-sm">Total Views</span>
-            <span className="text-white font-bold text-lg">115.4B</span>
-          </div>
-          <div className="flex items-center justify-between px-5 py-3.5 rounded-xl border border-white/10 bg-white/[0.03]">
-            <span className="text-zinc-400 text-sm">Videos</span>
-            <span className="text-white font-bold text-lg">847</span>
-          </div>
-        </div>
-      </motion.div>
     </section>
   );
 }

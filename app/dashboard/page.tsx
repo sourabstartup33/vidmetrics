@@ -136,10 +136,10 @@ function DashboardContent() {
   const TIME_FILTERS: Timeframe[] = ['Latest', '7D', '28D', '3M', '1Y'];
 
   return (
-    <div className="min-h-screen flex flex-col bg-black text-white selection:bg-indigo-500/30 font-sans">
+    <div className="min-h-screen flex flex-col bg-black text-white selection:bg-indigo-500/30 font-sans overflow-x-hidden">
       <DashboardNav onAnalyze={handleNavAnalyze} isLoading={loading} />
 
-      <main className="max-w-[1280px] mx-auto px-6 py-8 w-full">
+      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
         <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(99,102,241,0.06)_0%,transparent_70%)] pointer-events-none z-0" />
         <div className="fixed inset-0 bg-[url('/noise.png')] opacity-15 mix-blend-overlay pointer-events-none z-0" />
 

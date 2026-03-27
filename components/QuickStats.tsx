@@ -15,7 +15,7 @@ interface StatCardProps {
 function StatCard({ label, value, sublabel }: StatCardProps) {
   return (
     <div
-      className="bg-[#0A0A0A] rounded-xl p-5 border border-white/[0.08]"
+      className="bg-[#0A0A0A] rounded-xl p-4 sm:p-5 border border-white/[0.08]"
       style={{ borderTop: '2px solid rgba(99,102,241,0.4)' }}
     >
       <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2">{label}</p>

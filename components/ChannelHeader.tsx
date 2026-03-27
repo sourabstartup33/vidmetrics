@@ -16,7 +16,7 @@ export default function ChannelHeader({ channel }: ChannelHeaderProps) {
   );
 
   return (
-    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 border-t-indigo-500/40 p-6 shadow-sm mb-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative overflow-hidden">
+    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 border-t-indigo-500/40 p-4 sm:p-6 shadow-sm mb-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-6 relative overflow-hidden">
       {/* Subtle background glow behind avatar */}
       <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
       <div className="flex items-center gap-5">
@@ -55,9 +55,9 @@ export default function ChannelHeader({ channel }: ChannelHeaderProps) {
 
 function ChannelMetric({ title, value }: { title: string; value: string }) {
   return (
-    <div className="bg-[#111111] rounded-lg border border-white/5 border-l-[3px] border-l-indigo-500/50 p-4 min-w-[140px]">
+    <div className="bg-[#111111] rounded-lg border border-white/5 border-l-[3px] border-l-indigo-500/50 p-3 sm:p-4">
       <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-1.5">{title}</div>
-      <div className="text-2xl font-bold text-white tabular-nums tracking-tight">{value}</div>
+      <div className="text-xl sm:text-2xl font-bold text-white tabular-nums tracking-tight">{value}</div>
     </div>
   );
 }
