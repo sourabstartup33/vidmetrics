@@ -70,6 +70,11 @@ function DashboardContent() {
       setInsights(generateInsights(result));
       setIsDemoMode(isDemo);
       document.title = `${result.channel.title} — VidMetrics`;
+
+      // Sync browser URL so refresh reloads the correct channel
+      const handle = result.channel.handle || url;
+      const newUrl = `/dashboard?channel=${encodeURIComponent(handle)}`;
+      window.history.replaceState({}, '', newUrl);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'NETWORK_ERROR';
       setChannel(null);
