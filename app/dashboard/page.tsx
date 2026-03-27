@@ -10,6 +10,7 @@ import PerformanceChart from '@/components/PerformanceChart';
 import QuickStats from '@/components/QuickStats';
 import IntelligenceBrief from '@/components/IntelligenceBrief';
 import EmptyState from '@/components/EmptyState';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { Channel, Video, Insight, Timeframe } from '@/types';
 import { analyzeChannel, getErrorMessage, fetchTableVideosForTab } from '@/lib/youtube';
 import { generateInsights } from '@/lib/insights';
@@ -315,7 +316,9 @@ export default function DashboardPage() {
         <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
       </div>
     }>
-      <DashboardContent />
+      <ErrorBoundary fallbackMessage="The dashboard encountered an error. Please try again or refresh the page.">
+        <DashboardContent />
+      </ErrorBoundary>
     </Suspense>
   );
 }
