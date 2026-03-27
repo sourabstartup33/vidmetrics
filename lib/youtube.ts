@@ -27,8 +27,7 @@ const API_KEYS = [
 // Deduplicate in case the same key appears more than once
 const UNIQUE_API_KEYS = [...new Set(API_KEYS)];
 
-// Always visible in DevTools — helps diagnose Vercel env bundling
-console.log(`[VidMetrics] API keys loaded: ${UNIQUE_API_KEYS.length}`);
+
 
 let currentKeyIndex = 0;
 
@@ -39,12 +38,13 @@ function getCurrentKey(): string {
 function rotateKey(): boolean {
   if (currentKeyIndex < UNIQUE_API_KEYS.length - 1) {
     currentKeyIndex++;
-    console.log(
-      `[YouTube API] Quota exceeded on key ${currentKeyIndex}. Rotating to key ${currentKeyIndex + 1} of ${UNIQUE_API_KEYS.length}...`,
-    );
+    if (isDev) {
+      console.log(
+        `[YouTube API] Quota exceeded on key ${currentKeyIndex}. Rotating to key ${currentKeyIndex + 1} of ${UNIQUE_API_KEYS.length}...`,
+      );
+    }
     return true;
   }
-  console.log('[YouTube API] All keys exhausted. Falling back to demo data.');
   return false;
 }
 
@@ -61,7 +61,6 @@ function logQuota(label: string, units: number) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function youtubeRequest(url: string): Promise<any> {
   if (UNIQUE_API_KEYS.length === 0) {
-    console.warn('[YouTube API] No API keys configured — using demo data.');
     throw new Error('NO_API_KEY');
   }
 

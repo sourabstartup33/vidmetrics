@@ -11,7 +11,7 @@ import QuickStats from '@/components/QuickStats';
 import IntelligenceBrief from '@/components/IntelligenceBrief';
 import EmptyState from '@/components/EmptyState';
 import { Channel, Video, Insight, Timeframe } from '@/types';
-import { analyzeChannel, fetchTopVideos, fetchVideoStats, getErrorMessage, fetchTableVideosForTab } from '@/lib/youtube';
+import { analyzeChannel, getErrorMessage, fetchTableVideosForTab } from '@/lib/youtube';
 import { generateInsights } from '@/lib/insights';
 
 type TabOption = 'overview' | 'intelligence';
