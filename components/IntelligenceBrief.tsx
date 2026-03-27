@@ -17,14 +17,13 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import { Video, Channel, Insight } from '@/types';
+import { Video, Insight } from '@/types';
 import { formatNumber, parseDuration } from '@/lib/utils';
 import { generateAISummary } from '@/lib/gemini';
 
 interface IntelligenceBriefProps {
   recentVideos: Video[];     // last ~20 uploads, chronological
   extendedVideos: Video[];   // last ~50 uploads, chronological
-  channel: Channel | null;
   insights: Insight[];
   loading: boolean;
 }

@@ -296,7 +296,6 @@ function DashboardContent() {
                 <IntelligenceBrief
                   recentVideos={recentVideos}
                   extendedVideos={extendedVideos}
-                  channel={channel}
                   insights={insights}
                   loading={false}
                 />
