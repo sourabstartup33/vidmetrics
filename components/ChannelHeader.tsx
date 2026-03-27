@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { motion, useSpring, useTransform } from 'motion/react';
 import { Verified } from 'lucide-react'; // use Verified instead of BadgeCheck to match standard styling, and we inline MetricCard here
 import { Channel } from '@/types';
 import { formatNumber } from '@/lib/utils';
@@ -54,10 +56,42 @@ export default function ChannelHeader({ channel }: ChannelHeaderProps) {
 }
 
 function ChannelMetric({ title, value }: { title: string; value: string }) {
+  const [numericValue, setNumericValue] = useState(0);
+  const [suffix, setSuffix] = useState('');
+
+  useEffect(() => {
+    // Parse the string into a number and its suffix (like 'M', 'B', 'K')
+    const match = value.match(/([\d.]+)(.*)/);
+    if (match) {
+      setNumericValue(parseFloat(match[1]));
+      setSuffix(match[2]);
+    } else {
+      setNumericValue(0);
+      setSuffix('');
+    }
+  }, [value]);
+
+  const spring = useSpring(0, { bounce: 0, duration: 2000 });
+  
+  useEffect(() => {
+    spring.set(numericValue);
+  }, [numericValue, spring]);
+
+  const displayValue = useTransform(spring, (current) => {
+    const hasDecimal = value.includes('.');
+    return (hasDecimal ? current.toFixed(1) : Math.round(current).toString()) + suffix;
+  });
+
   return (
-    <div className="bg-[#111111] rounded-lg border border-white/5 border-l-[3px] border-l-indigo-500/50 p-3 sm:p-4">
-      <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-1.5">{title}</div>
-      <div className="text-xl sm:text-2xl font-bold text-white tabular-nums tracking-tight">{value}</div>
-    </div>
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="relative group bg-[#111111] rounded-lg border border-white/5 border-l-[3px] border-l-indigo-500/50 p-3 sm:p-4 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-1.5 relative z-10">{title}</div>
+      <motion.div className="text-xl sm:text-2xl font-bold text-white tabular-nums tracking-tight relative z-10">{displayValue}</motion.div>
+    </motion.div>
   );
 }
