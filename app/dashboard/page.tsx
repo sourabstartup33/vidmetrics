@@ -280,10 +280,10 @@ function DashboardContent() {
                       {/* BLOCK 2: Quick Stats */}
                       <QuickStats videos={tableVideos} loading={tabLoading} />
 
-                      {/* BLOCK 3: Video Table */}
+                      {/* BLOCK 3: Video Table — always latest 20 uploads, independent of time filter */}
                       <VideoTable
-                        videos={tableVideos}
-                        loading={tabLoading}
+                        videos={recentVideos}
+                        loading={loading}
                         channelUrl={channel ? `https://www.youtube.com/${channel.handle}/videos` : undefined}
                       />
                     </>
