@@ -2,104 +2,95 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertCircle, Loader2, X, RefreshCw, Info, Inbox, LayoutDashboard } from 'lucide-react';
+import { AlertCircle, Loader2, X, RefreshCw, Info } from 'lucide-react';
 import DashboardNav from '@/components/DashboardNav';
-import Sidebar from '@/components/Sidebar';
 import ChannelHeader from '@/components/ChannelHeader';
-import FilterBar, { SortOption, FilterOption } from '@/components/FilterBar';
 import VideoTable from '@/components/VideoTable';
-import ViewsOverTime from '@/components/AreaChart';
-import TopEngagementBar from '@/components/BarChart';
-import BestDayToPost from '@/components/BestDayToPost';
-import ContentBreakdown from '@/components/ContentBreakdown';
-import KeyInsights from '@/components/KeyInsights';
+import PerformanceChart from '@/components/PerformanceChart';
+import QuickStats from '@/components/QuickStats';
+import IntelligenceBrief from '@/components/IntelligenceBrief';
 import EmptyState from '@/components/EmptyState';
-import { Channel, Video, Timeframe, Insight } from '@/types';
-import { analyzeChannel, fetchTableVideosForTab, getErrorMessage } from '@/lib/youtube';
+import { Channel, Video, Insight } from '@/types';
+import { analyzeChannel, fetchTopVideos, fetchVideoStats, getErrorMessage } from '@/lib/youtube';
 import { generateInsights } from '@/lib/insights';
-import { formatDate } from '@/lib/utils';
 
-// Map FilterBar's FilterOption → our Timeframe type
-function toTimeframe(filter: FilterOption): Timeframe {
-  switch (filter) {
-    case 'month': return 'thisMonth';
-    case 'week': return 'thisWeek';
-    default: return 'allTime';
-  }
-}
+type TabOption = 'overview' | 'intelligence';
+// 'Latest' = most recent 20 uploads (default). Time tabs fetch API-filtered results.
+type TimeFilter = 'Latest' | '7D' | '28D' | '3M' | '1Y';
 
-// Min video thresholds for time-filtered tabs
-const MIN_VIDEOS: Record<Timeframe, number> = {
-  allTime: 0,
-  thisMonth: 5,
-  thisWeek: 3,
+const TIMEFRAME_DAYS: Record<Exclude<TimeFilter, 'Latest'>, number> = {
+  '7D': 7,
+  '28D': 28,
+  '3M': 90,
+  '1Y': 365,
 };
 
-// Empty state messages for insufficient data
-const EMPTY_MESSAGES: Record<Timeframe, string> = {
-  allTime: '',
-  thisMonth: "This channel hasn't posted enough this month to analyze. Try 'All Time' for full performance data.",
-  thisWeek: "This channel hasn't posted enough this week to analyze. Try 'All Time' for full performance data.",
-};
-
-// Inner component that reads search params (must be inside Suspense)
 function DashboardContent() {
   const searchParams = useSearchParams();
 
-  // ── State ───────────────────────────────────────────────────
-  const [channel, setChannel] = useState<Channel | null>(null);
-  const [tableVideos, setTableVideos] = useState<Video[]>([]);
-  const [recentVideos, setRecentVideos] = useState<Video[]>([]);
-  const [extendedVideos, setExtendedVideos] = useState<Video[]>([]);
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [tabLoading, setTabLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [inputError, setInputError] = useState('');
-  const [sort, setSort] = useState<SortOption>('views');
-  const [filter, setFilter] = useState<FilterOption>('all');
-  const [isDemoMode, setIsDemoMode] = useState(false);
+  // ── Core state ───────────────────────────────────────────────
+  const [channel,      setChannel]      = useState<Channel | null>(null);
+  const [recentVideos, setRecentVideos] = useState<Video[]>([]);   // latest 20 uploads
+  const [tabVideos,    setTabVideos]    = useState<Video[]>([]);   // time-filtered videos
+  const [insights,     setInsights]     = useState<Insight[]>([]);
+  const [loading,      setLoading]      = useState(false);
+  const [tabLoading,   setTabLoading]   = useState(false);
+  const [error,        setError]        = useState<string | null>(null);
+  const [inputError,   setInputError]   = useState('');
+  const [isDemoMode,   setIsDemoMode]   = useState(false);
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(false);
   const [lastFetchUrl, setLastFetchUrl] = useState('');
-  const [insufficientData, setInsufficientData] = useState('');
 
-  // ── Tab cache: avoid re-fetching already-loaded timeframes ──
-  const tabCache = useRef<Record<Timeframe, Video[] | null>>({
-    allTime: null,
-    thisMonth: null,
-    thisWeek: null,
-  });
+  // ── Tab / time-filter state ──────────────────────────────────
+  const [activeTab,  setActiveTab]  = useState<TabOption>('overview');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('Latest');
 
-  // ── Full fetch (new channel) ────────────────────────────────
+  // Per-channel cache for each time filter tab
+  const tabCache = useRef<Partial<Record<TimeFilter, Video[]>>>({});
+
+  // ── Videos currently shown ───────────────────────────────────
+  // For 'Latest', use recentVideos (already fetched from analyzeChannel).
+  // For time tabs, use tabVideos (fetched on demand).
+  const activeVideos = timeFilter === 'Latest' ? recentVideos : tabVideos;
+
+  // Chart: chronological (oldest → newest) — correct X axis direction
+  const chartVideos = useMemo(
+    () => [...activeVideos].sort(
+      (a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()
+    ),
+    [activeVideos],
+  );
+
+  // Table: newest first
+  const tableVideos = useMemo(
+    () => [...activeVideos].sort(
+      (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+    ),
+    [activeVideos],
+  );
+
+  // ── Full channel fetch ───────────────────────────────────────
   const doFetch = useCallback(async (url: string, isDemo = false) => {
     setLoading(true);
     setError(null);
     setInputError('');
-    setInsufficientData('');
     setLastFetchUrl(url);
-    // Clear tab cache for new channel
-    tabCache.current = { allTime: null, thisMonth: null, thisWeek: null };
+    setTimeFilter('Latest');
+    tabCache.current = {};
 
     try {
       const result = await analyzeChannel(url, 'allTime');
       setChannel(result.channel);
-      setTableVideos(result.tableVideos);
       setRecentVideos(result.recentVideos);
-      setExtendedVideos(result.extendedVideos);
+      setTabVideos([]);
       setInsights(generateInsights(result));
-      setSort('views');
-      setFilter('all');
       setIsDemoMode(isDemo);
-      // Cache the allTime tab
-      tabCache.current.allTime = result.tableVideos;
-      // Update browser tab title
       document.title = `${result.channel.title} — VidMetrics`;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'NETWORK_ERROR';
       setChannel(null);
-      setTableVideos([]);
       setRecentVideos([]);
-      setExtendedVideos([]);
+      setTabVideos([]);
       setInsights([]);
       if (msg === 'INVALID_URL') {
         setInputError('Please enter a valid YouTube channel URL');
@@ -113,323 +104,232 @@ function DashboardContent() {
     }
   }, []);
 
-  // ── Tab switch fetch (same channel, different timeframe) ────
-  const doTabFetch = useCallback(async (filterVal: FilterOption) => {
-    const timeframe = toTimeframe(filterVal);
+  // ── Time-filter tab fetch ─────────────────────────────────────
+  const doTabFetch = useCallback(async (t: TimeFilter) => {
+    if (!channel) return;
 
-    // Check cache first
-    if (tabCache.current[timeframe] !== null) {
-      const cached = tabCache.current[timeframe]!;
-      setTableVideos(cached);
-      setInsufficientData(
-        cached.length < MIN_VIDEOS[timeframe] ? EMPTY_MESSAGES[timeframe] : '',
-      );
+    // 'Latest' always uses already-fetched recentVideos
+    if (t === 'Latest') {
+      setTimeFilter('Latest');
+      setTabVideos([]);
       return;
     }
 
-    if (!channel) return;
+    // Cache hit
+    if (tabCache.current[t]) {
+      setTabVideos(tabCache.current[t]!);
+      setTimeFilter(t);
+      return;
+    }
 
     setTabLoading(true);
-    setInsufficientData('');
-
     try {
-      const videos = await fetchTableVideosForTab(channel.id, timeframe);
-      tabCache.current[timeframe] = videos;
-      setTableVideos(videos);
-      if (videos.length < MIN_VIDEOS[timeframe]) {
-        setInsufficientData(EMPTY_MESSAGES[timeframe]);
+      let videos: Video[];
+      const days = TIMEFRAME_DAYS[t];
+      if (t === '7D' || t === '28D') {
+        const ids = await fetchTopVideos(
+          channel.id,
+          t === '7D' ? 'thisWeek' : 'thisMonth',
+          50,
+        );
+        videos = await fetchVideoStats(ids);
+      } else {
+        // 3M / 1Y: fetch 50 by date, filter by cutoff
+        const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        const ids = await fetchTopVideos(channel.id, 'allTime', 50);
+        const all = await fetchVideoStats(ids);
+        videos = all.filter((v) => new Date(v.publishedAt) > cutoff);
       }
+      tabCache.current[t] = videos;
+      setTabVideos(videos);
+      setTimeFilter(t);
     } catch {
-      setInsufficientData('Failed to load data for this time period. Please try again.');
+      // keep current data on error
     } finally {
       setTabLoading(false);
     }
   }, [channel]);
 
-  // ── Load on mount + handle ?channel= param ─────────────────
+  // ── Mount: load demo ─────────────────────────────────────────
   useEffect(() => {
     const channelParam = searchParams.get('channel');
-    if (channelParam) {
-      doFetch(channelParam, false);
-    } else {
-      doFetch('@MrBeast', true);
-    }
+    doFetch(channelParam ?? '@MrBeast', !channelParam);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Navbar "Analyze" handler ────────────────────────────────
+  // ── Navbar handler ────────────────────────────────────────────
   const handleNavAnalyze = useCallback((url: string) => {
     setIsDemoMode(false);
     setDemoBannerDismissed(false);
     doFetch(url, false);
   }, [doFetch]);
 
-  // ── Filter change handler — triggers API call per tab ──────
-  const handleFilterChange = useCallback(
-    (newFilter: FilterOption) => {
-      setFilter(newFilter);
-      setSort('views');
-      doTabFetch(newFilter);
-    },
-    [doTabFetch],
-  );
-
-  // ── Sort ────────────────────────────────────────────────────
-  const sortedVideos = useMemo(() => {
-    const s = [...tableVideos];
-    switch (sort) {
-      case 'views':      s.sort((a, b) => b.views - a.views); break;
-      case 'engagement': s.sort((a, b) => b.engagementRate - a.engagementRate); break;
-      case 'trending':   s.sort((a, b) => b.trendingScore - a.trendingScore); break;
-      case 'date':       s.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()); break;
-    }
-    return s;
-  }, [tableVideos, sort]);
-
-  // ── CSV Export ──────────────────────────────────────────────
-  const handleExport = useCallback(() => {
-    if (sortedVideos.length === 0) return;
-    const headers = ['Title', 'Views', 'Likes', 'Comments', 'Engagement Rate', 'Trending Score', 'Published', 'URL'];
-    const rows = sortedVideos.map((v) => [
-      `"${v.title.replace(/"/g, '""')}"`,
-      v.views, v.likes, v.comments,
-      `${v.engagementRate}%`, v.trendingScore,
-      formatDate(v.publishedAt),
-      v.url,
-    ]);
-    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const csvUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const handle = channel?.handle?.replace('@', '') || 'channel';
-    const date = new Date().toISOString().split('T')[0];
-    link.href = csvUrl;
-    link.download = `vidmetrics-${handle}-${date}.csv`;
-    link.click();
-    URL.revokeObjectURL(csvUrl);
-  }, [sortedVideos, channel]);
+  const TIME_FILTERS: TimeFilter[] = ['Latest', '7D', '28D', '3M', '1Y'];
 
   return (
     <div className="min-h-screen flex flex-col bg-black text-white selection:bg-indigo-500/30 font-sans">
       <DashboardNav onAnalyze={handleNavAnalyze} isLoading={loading} />
 
-      <div className="flex flex-1 overflow-hidden relative">
-        <Sidebar />
+      <main className="max-w-[1280px] mx-auto px-6 py-8 w-full">
+        <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(99,102,241,0.06)_0%,transparent_70%)] pointer-events-none z-0" />
+        <div className="fixed inset-0 bg-[url('/noise.png')] opacity-15 mix-blend-overlay pointer-events-none z-0" />
 
-        <main className="flex-1 overflow-y-auto relative z-10">
-          {/* Global Dashboard Glow & Noise */}
-          <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(99,102,241,0.06)_0%,transparent_70%)] pointer-events-none z-0" />
-          <div className="fixed inset-0 bg-[url('/noise.png')] opacity-15 mix-blend-overlay pointer-events-none z-0" />
+        <div className="relative z-10">
 
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 w-full relative z-10">         {/* ── Inline input error (when nav form fails) ─── */}
-            {inputError && (
-              <p className="mb-4 text-sm text-red-400 flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                {inputError}
-              </p>
-            )}
+          {/* Input error */}
+          {inputError && (
+            <p className="mb-4 text-sm text-red-400 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />{inputError}
+            </p>
+          )}
 
-            {/* ── API/network error full-page state ─────────── */}
-            {error && !loading && !channel && (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-400" />
-                </div>
-                <EmptyState
-                  icon="😵"
-                  title="Unable to load channel data"
-                  message={error}
-                  action={{
-                    label: 'Retry',
-                    onClick: () => lastFetchUrl && doFetch(lastFetchUrl, lastFetchUrl === '@MrBeast'),
-                  }}
-                />
-                <button
-                  onClick={() => lastFetchUrl && doFetch(lastFetchUrl, lastFetchUrl === '@MrBeast')}
-                  className="mt-2 px-5 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors text-sm flex items-center gap-2 mx-auto"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Retry
-                </button>
+          {/* Full page error */}
+          {error && !loading && !channel && (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
+                <AlertCircle className="w-8 h-8 text-red-400" />
               </div>
-            )}
+              <EmptyState icon="😵" title="Unable to load channel data" message={error} />
+              <button
+                onClick={() => lastFetchUrl && doFetch(lastFetchUrl, lastFetchUrl === '@MrBeast')}
+                className="mt-4 px-5 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors text-sm flex items-center gap-2 mx-auto"
+              >
+                <RefreshCw className="w-4 h-4" /> Retry
+              </button>
+            </div>
+          )}
 
-            {/* ── Loading Skeleton ─────────────────────────── */}
-            {loading && (
-              <div className="space-y-6">
-                {/* Channel header skeleton */}
-                <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-6 shadow-sm mb-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 animate-pulse">
-                  <div className="flex items-center gap-5">
-                    <div className="w-20 h-20 rounded-full bg-zinc-800" />
-                    <div className="space-y-3">
-                      <div className="h-7 w-48 bg-zinc-800 rounded-lg" />
-                      <div className="h-4 w-28 bg-zinc-800 rounded-lg" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full lg:w-auto">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="bg-black/50 px-4 py-3 rounded-lg border border-white/5">
-                        <div className="h-3 w-16 bg-zinc-800 rounded mb-2" />
-                        <div className="h-5 w-20 bg-zinc-800 rounded" />
-                      </div>
-                    ))}
+          {/* Loading skeleton */}
+          {loading && (
+            <div className="space-y-6 animate-pulse">
+              <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div className="flex items-center gap-5">
+                  <div className="w-20 h-20 rounded-full bg-zinc-800" />
+                  <div className="space-y-3">
+                    <div className="h-7 w-48 bg-zinc-800 rounded-lg" />
+                    <div className="h-4 w-28 bg-zinc-800 rounded-lg" />
                   </div>
                 </div>
-
-                {/* Key Insights skeleton */}
-                <KeyInsights insights={[]} loading={true} />
-
-                {/* Charts skeleton — 2x2 grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="bg-[#0A0A0A] rounded-2xl border border-white/10 p-5 animate-pulse">
-                      <div className="h-4 w-36 bg-zinc-800 rounded mb-1" />
-                      <div className="h-3 w-52 bg-zinc-800/60 rounded mb-4" />
-                      <div className="h-52 bg-zinc-800/50 rounded-xl" />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Table skeleton */}
-                <div className="bg-[#0A0A0A] rounded-xl border border-white/10 overflow-hidden">
-                  <div className="h-12 bg-white/5 border-b border-white/10" />
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div key={i} className="flex items-center gap-5 px-6 py-4 border-b border-white/5 animate-pulse">
-                      <div className="w-5 h-4 bg-zinc-800 rounded shrink-0" />
-                      <div className="w-24 h-14 bg-zinc-800 rounded-md shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 w-3/4 bg-zinc-800 rounded" />
-                        <div className="h-3 w-1/3 bg-zinc-800 rounded" />
-                      </div>
-                      <div className="h-4 w-16 bg-zinc-800 rounded" />
-                      <div className="h-4 w-12 bg-zinc-800 rounded" />
-                      <div className="h-6 w-16 bg-zinc-800 rounded-full" />
-                      <div className="h-6 w-20 bg-zinc-800 rounded-full" />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full lg:w-auto">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="bg-black/50 px-4 py-3 rounded-lg border border-white/5">
+                      <div className="h-3 w-16 bg-zinc-800 rounded mb-2" />
+                      <div className="h-5 w-20 bg-zinc-800 rounded" />
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* ── Main Content ─────────────────────────────── */}
-            {!loading && channel && (
-              <div>
-                {/* ── Demo banner ──────────────────────────── */}
-                {isDemoMode && !demoBannerDismissed && (
-                  <div className="mb-5 flex items-start sm:items-center justify-between gap-3 px-4 py-3 bg-indigo-500/10 border border-indigo-500/20 border-l-[3px] border-l-indigo-500 rounded-lg shadow-sm">
-                    <div className="flex items-start sm:items-center gap-3">
-                      <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5 sm:mt-0" />
-                      <p className="text-sm text-indigo-200">
-                        Demo analysis of <span className="text-white font-bold">@MrBeast</span> — paste any channel URL above to analyze your own competitor
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setDemoBannerDismissed(true)}
-                      className="shrink-0 p-1.5 text-indigo-400 hover:text-white transition-colors rounded-md hover:bg-white/10"
-                      aria-label="Dismiss demo banner"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+          {/* Main content */}
+          {!loading && channel && (
+            <div>
+              <ChannelHeader channel={channel} />
 
-                {/* ── SECTION 1: WHO — Channel Header ─────── */}
-                <ChannelHeader channel={channel} />
-
-                {/* ── SECTION 2 & 3: WHY — Competitive Intelligence ─── */}
-                {recentVideos.length > 0 && (
-                  <div className="mb-8">
-                    <div className="mb-5">
-                      <h2 className="text-xl font-extrabold text-white">Competitive Intelligence</h2>
-                      <p className="text-sm text-zinc-500">Strategic breakdown of {channel.title}&apos;s content performance</p>
-                    </div>
-
-                    {/* SECTION 2: WHAT — Key Insights strip */}
-                    <KeyInsights insights={insights} loading={false} />
-
-                    {/* SECTION 3: WHY — 2×2 chart grid */}
-                    {/* AreaChart → recentVideos (last 20 chronological) */}
-                    {/* BarChart → tableVideos top 5 by engagement (current tab)  */}
-                    {/* BestDayToPost → extendedVideos (last 50)                  */}
-                    {/* ContentBreakdown → recentVideos (last 20 chronological)   */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      <ViewsOverTime videos={recentVideos} />
-                      <TopEngagementBar videos={tableVideos} />
-                      <BestDayToPost videos={extendedVideos} />
-                      <ContentBreakdown videos={recentVideos} />
-                    </div>
-                  </div>
-                )}
-
-                {/* ── SECTION 4: DRILL DOWN — Video Table ──── */}
-                <div className="mb-8">
-                  <div className="mb-6">
-                    <h2 className="text-xl font-extrabold text-white">Performance Intelligence</h2>
-                    <p className="text-sm text-zinc-400">
-                      {sortedVideos.length} video{sortedVideos.length !== 1 ? 's' : ''} ·{' '}
-                      {filter === 'all' ? 'All time' : filter === 'month' ? 'Last 30 days' : 'Last 7 days'}
+              {/* Demo banner */}
+              {isDemoMode && !demoBannerDismissed && (
+                <div className="mb-6 flex items-start sm:items-center justify-between gap-3 px-4 py-3 bg-indigo-500/10 border border-indigo-500/20 border-l-[3px] border-l-indigo-500 rounded-lg">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5 sm:mt-0" />
+                    <p className="text-sm text-indigo-200">
+                      Demo analysis of <span className="text-white font-bold">@MrBeast</span> — paste any channel URL above to analyze your own competitor
                     </p>
                   </div>
+                  <button
+                    onClick={() => setDemoBannerDismissed(true)}
+                    className="shrink-0 p-1.5 text-indigo-400 hover:text-white transition-colors rounded-md hover:bg-white/10"
+                    aria-label="Dismiss demo banner"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
 
-                  <FilterBar
-                    sort={sort}
-                    onSortChange={setSort}
-                    filter={filter}
-                    onFilterChange={handleFilterChange}
-                    onExport={handleExport}
-                  />
-
-                  {/* Tab-level loading skeleton */}
-                  {tabLoading ? (
-                    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 overflow-hidden">
-                      <div className="h-12 bg-white/5 border-b border-white/10" />
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="flex items-center gap-5 px-6 py-4 border-b border-white/5 animate-pulse">
-                          <div className="w-5 h-4 bg-zinc-800 rounded shrink-0" />
-                          <div className="w-24 h-14 bg-zinc-800 rounded-md shrink-0" />
-                          <div className="flex-1 space-y-2">
-                            <div className="h-4 w-3/4 bg-zinc-800 rounded" />
-                            <div className="h-3 w-1/3 bg-zinc-800 rounded" />
-                          </div>
-                          <div className="h-4 w-16 bg-zinc-800 rounded" />
-                          <div className="h-4 w-12 bg-zinc-800 rounded" />
-                          <div className="h-6 w-16 bg-zinc-800 rounded-full" />
-                          <div className="h-6 w-20 bg-zinc-800 rounded-full" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : insufficientData ? (
-                    <div className="bg-[#0A0A0A] rounded-xl border border-white/10">
-                      <EmptyState
-                        icon={<Inbox className="w-8 h-8 opacity-60" />}
-                        title="Not enough recent data"
-                        message={insufficientData}
-                        action={{ label: "Show all videos", onClick: () => handleFilterChange('all') }}
-                      />
-                    </div>
-                  ) : sortedVideos.length > 0 ? (
-                    <VideoTable videos={sortedVideos} />
-                  ) : (
-                    <div className="bg-[#0A0A0A] rounded-xl border border-white/10">
-                      <EmptyState
-                        icon={<LayoutDashboard className="w-8 h-8 opacity-60" />}
-                        title="No videos found"
-                        message="No videos found for this time period."
-                        action={{ label: "Show all videos", onClick: () => handleFilterChange('all') }}
-                      />
-                    </div>
-                  )}
+              {/* Tab switcher */}
+              <div className="border-b border-white/10 mb-8 overflow-x-auto scrollbar-hide">
+                <div className="flex items-center gap-8">
+                  {(['overview', 'intelligence'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`py-4 text-sm font-semibold uppercase tracking-wider whitespace-nowrap transition-colors relative ${
+                        activeTab === tab ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      {tab === 'overview' ? 'Overview' : 'Intelligence Brief'}
+                      {activeTab === tab && (
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-indigo-500" />
+                      )}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
-        </main>
-      </div>
+
+              {/* ══ TAB 1: OVERVIEW ══════════════════════════════════ */}
+              {activeTab === 'overview' && (
+                <div className="animate-in fade-in duration-200 space-y-8">
+
+                  {/* Time filter bar */}
+                  <div className="flex items-center gap-2">
+                    {TIME_FILTERS.map(t => (
+                      <button
+                        key={t}
+                        onClick={() => doTabFetch(t)}
+                        disabled={tabLoading}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50 ${
+                          timeFilter === t
+                            ? 'bg-indigo-500 text-white'
+                            : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                    {tabLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin ml-1" />}
+                  </div>
+
+                  {/* Empty state for time-filtered tabs with no results */}
+                  {!tabLoading && timeFilter !== 'Latest' && tabVideos.length === 0 ? (
+                    <div className="bg-[#0A0A0A] rounded-xl border border-white/10">
+                      <EmptyState
+                        icon="📭"
+                        title="No videos in this period"
+                        message="No uploads found in this time range"
+                        action={{ label: 'View Latest', onClick: () => doTabFetch('Latest') }}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      {/* BLOCK 1: Performance Chart */}
+                      <PerformanceChart videos={chartVideos} loading={tabLoading} />
+
+                      {/* BLOCK 2: Quick Stats */}
+                      <QuickStats videos={activeVideos} loading={tabLoading} />
+
+                      {/* BLOCK 3: Video Table */}
+                      <VideoTable videos={tableVideos} loading={tabLoading} />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ══ TAB 2: INTELLIGENCE BRIEF ════════════════════════ */}
+              {activeTab === 'intelligence' && (
+                <IntelligenceBrief
+                  videos={recentVideos}
+                  insights={insights}
+                  loading={false}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
 
-// Wrap with Suspense because useSearchParams() requires it in Next.js App Router
 export default function DashboardPage() {
   return (
     <Suspense fallback={

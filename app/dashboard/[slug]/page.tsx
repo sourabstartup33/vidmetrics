@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Construction, Bell, CheckCircle } from 'lucide-react';
 import DashboardNav from '@/components/DashboardNav';
-import Sidebar from '@/components/Sidebar';
 
 const featureNames: Record<string, string> = {
   competitors: 'Competitor Tracking',
@@ -23,7 +22,6 @@ export default function ComingSoonPage() {
     <div className="min-h-screen bg-black text-white font-sans">
       <DashboardNav />
       <div className="flex">
-        <Sidebar />
         <main className="flex-1 flex items-center justify-center h-[calc(100vh-4rem)] p-8">
           <div className="text-center max-w-md">
             {/* Icon */}
