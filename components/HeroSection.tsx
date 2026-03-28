@@ -287,21 +287,21 @@ export default function HeroSection() {
                 <div className="flex flex-col gap-3 flex-1 justify-center">
                   <div className="flex items-center justify-between p-2.5 rounded-lg hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-100">
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-8 h-8 rounded-md bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold shrink-0">🔥 94</div>
+                      <div className="w-8 h-8 rounded-md bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold shrink-0"><span className="w-2 h-2 rounded-full inline-block mr-1" style={{backgroundColor: '#10B981'}} />94</div>
                       <div className="text-sm text-zinc-800 font-medium truncate">I Spent 7 Days...</div>
                     </div>
                     <div className="text-sm text-zinc-500 font-medium shrink-0 ml-2">89.2M views</div>
                   </div>
                   <div className="flex items-center justify-between p-2.5 rounded-lg hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-100">
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-8 h-8 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">⚡ 87</div>
+                      <div className="w-8 h-8 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0"><span className="w-2 h-2 rounded-full inline-block mr-1" style={{backgroundColor: '#F59E0B'}} />87</div>
                       <div className="text-sm text-zinc-800 font-medium truncate">$1 vs $1,000,000...</div>
                     </div>
                     <div className="text-sm text-zinc-500 font-medium shrink-0 ml-2">76.4M views</div>
                   </div>
                   <div className="flex items-center justify-between p-2.5 rounded-lg hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-100">
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-8 h-8 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold shrink-0">📈 82</div>
+                      <div className="w-8 h-8 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold shrink-0"><span className="w-2 h-2 rounded-full inline-block mr-1" style={{backgroundColor: '#10B981'}} />82</div>
                       <div className="text-sm text-zinc-800 font-medium truncate">Last To Leave...</div>
                     </div>
                     <div className="text-sm text-zinc-500 font-medium shrink-0 ml-2">71.2M views</div>

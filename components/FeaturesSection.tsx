@@ -32,7 +32,7 @@ const features = [
   {
     icon: Zap,
     title: "Real-time Data",
-    description: "YouTube API powered, always fresh, never cached."
+    description: "YouTube API powered, always up to date and ready when you need it."
   }
 ];
 
