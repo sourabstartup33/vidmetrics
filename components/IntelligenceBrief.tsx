@@ -325,9 +325,10 @@ function computeContentGaps(recentVideos: Video[], extendedVideos: Video[]): Con
         action: `Match or exceed their ${avgDays} day cadence to stay competitive`,
       });
     } else {
+      const cadenceLabel = avgDays <= 1 ? 'every day' : `every ${avgDays} days`;
       gaps.push({
         gap: 'High frequency posting',
-        detail: `Uploads every ${avgDays} days — aggressive content velocity`,
+        detail: `Uploads ${cadenceLabel} — aggressive content velocity`,
         action: 'Compete on quality over quantity — they own frequency, you own depth',
       });
     }
