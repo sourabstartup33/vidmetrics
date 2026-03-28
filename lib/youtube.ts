@@ -400,7 +400,13 @@ export async function fetchTableVideosForTab(
   channelId: string,
   timeframe: Timeframe,
 ): Promise<Video[]> {
-  const videoIds = await fetchTopVideos(channelId, timeframe);
+  // Use more results for longer timeframes so the chart actually shows a
+  // different/wider date range (prevents the "same graph" visual bug)
+  let maxResults = 20;
+  if (timeframe === '3M') maxResults = 30;
+  if (timeframe === '1Y') maxResults = 50;
+
+  const videoIds = await fetchTopVideos(channelId, timeframe, maxResults);
   const videos = await fetchVideoStats(videoIds);
 
   if (timeframe === 'Latest') {
@@ -409,7 +415,7 @@ export async function fetchTableVideosForTab(
     videos.sort((a, b) => b.views - a.views);
   }
 
-  logQuota(`Tab switch (${timeframe})`, 101);
+  logQuota(`Tab switch (${timeframe}, max=${maxResults})`, 101);
   return videos;
 }
 

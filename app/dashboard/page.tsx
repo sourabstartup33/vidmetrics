@@ -274,8 +274,7 @@ function DashboardContent() {
                   ) : (
                     <>
                       {/* BLOCK 1: Performance Chart */}
-                      {/* Does not show skeleton so it seamlessly switches */}
-                      <PerformanceChart videos={chartVideos} loading={false} />
+                      <PerformanceChart videos={chartVideos} loading={tabLoading} />
 
                       {/* BLOCK 2: Quick Stats */}
                       <QuickStats videos={tableVideos} loading={tabLoading} />
