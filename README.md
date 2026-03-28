@@ -16,7 +16,7 @@ VidMetrics is a YouTube competitor analytics tool built for enterprise content t
 Backward looking. What has this channel done?
 
 - Performance chart with metric toggles (Views, Engagement Rate, Trending Score)
-- Shared time filter (7D, 28D, 3M, 1Y, All) controlling all sections simultaneously
+- Shared time filter (7D, 28D, 3M, 1Y) controlling all sections simultaneously
 - Quick stats row (Avg Views, Avg Engagement, Videos Published, Hot Content %)
 - Full video table with sorting, pagination, and one-click CSV export
 
@@ -184,7 +184,7 @@ Built in under 4 days as part of a product challenge. The entire workflow was AI
 
 ### The Workflow
 
-**Step 1 — Design Shell (Google AI Studio + Gemini 2.5 Pro)**
+**Step 1 — Design Shell (Google AI Studio + Gemini 3.1 Pro)**
 
 Used Google AI Studio to generate the initial UI from detailed prompts and reference screenshots of Linear and Tubular Labs. This produced the full component structure, Tailwind styling system, and animation foundations in a single generation pass.
 
@@ -202,8 +202,8 @@ Used strategic model selection throughout:
 
 - Claude Opus for complex architectural decisions (data layer, API design)
 - Claude Sonnet for standard logic, API wiring, and bug fixes
-- Gemini 2.5 Pro for UI components, design sessions, and layout work
-- Gemini 2.5 Flash for quick targeted fixes and text changes
+- Gemini 3.1 Pro for UI components, design sessions, and layout work
+- Gemini 3.1 Flash for quick targeted fixes and text changes
 
 **Step 3 — Intelligence Layer**
 
