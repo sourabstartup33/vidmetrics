@@ -5,12 +5,31 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+section {
+  scroll-margin-top: 80px;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #000000;
   color: #EDEDED;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 20px rgba(99,102,241,0.3);
 }
 
 @keyframes fadeIn {
@@ -38,6 +57,15 @@ body {
 
 .animate-pulse-glow {
   animation: pulseGlow 4s ease-in-out infinite;
+}
+
+@keyframes borderGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(99,102,241,0.2); }
+  50% { box-shadow: 0 0 25px rgba(99,102,241,0.4); }
+}
+
+.animate-border-glow {
+  animation: borderGlow 3s ease-in-out infinite;
 }
 
 .delay-100 { animation-delay: 100ms; }

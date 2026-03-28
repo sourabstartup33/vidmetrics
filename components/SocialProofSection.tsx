@@ -1,3 +1,7 @@
+'use client';
+
+import { motion } from 'motion/react';
+
 export default function SocialProofSection() {
   const testimonials = [
     {
@@ -23,13 +27,26 @@ export default function SocialProofSection() {
   return (
     <section className="py-32 bg-black">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-20">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-20"
+        >
           <h2 className="text-3xl md:text-5xl font-bold text-gradient tracking-tighter">Trusted by top teams</h2>
-        </div>
+        </motion.div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
           {testimonials.map((t, i) => (
-            <div key={i} className="p-8 bg-[#0A0A0A] rounded-2xl border border-white/5 flex flex-col justify-between hover:border-white/10 transition-colors">
+            <motion.div 
+              key={i} 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.1 }}
+              className="p-8 bg-[#0A0A0A] rounded-2xl border border-white/5 flex flex-col justify-between hover:border-white/10 transition-colors"
+            >
               <p className="text-zinc-400 text-sm mb-8 leading-relaxed">&quot;{t.quote}&quot;</p>
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-zinc-800 rounded-full overflow-hidden">
@@ -41,7 +58,7 @@ export default function SocialProofSection() {
                   <p className="text-xs text-zinc-500">{t.role}, {t.company}</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
         

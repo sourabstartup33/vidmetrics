@@ -1,18 +1,34 @@
+'use client';
+
 import { Check } from 'lucide-react';
 import Link from 'next/link';
+import { motion } from 'motion/react';
 
 export default function PricingSection() {
   return (
     <section id="pricing" className="py-32 bg-black relative border-t border-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-20">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-20"
+        >
           <h2 className="text-3xl md:text-5xl font-bold text-gradient tracking-tighter mb-4">Pricing that scales.</h2>
           <p className="text-zinc-400 max-w-2xl mx-auto text-lg">Start for free, upgrade when you need more power.</p>
-        </div>
+        </motion.div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {/* Starter */}
-          <div className="bg-[#0A0A0A] rounded-2xl border border-white/5 p-8 flex flex-col">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            whileHover={{ y: -4 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0, y: { duration: 0.2 } }}
+            className="bg-[#0A0A0A] rounded-2xl border border-white/5 p-8 flex flex-col"
+          >
             <h3 className="text-xl font-semibold text-zinc-100 mb-2">Starter</h3>
             <div className="mb-6">
               <span className="text-4xl font-bold text-white">$49</span>
@@ -30,10 +46,17 @@ export default function PricingSection() {
                 </li>
               ))}
             </ul>
-          </div>
+          </motion.div>
           
           {/* Pro */}
-          <div className="bg-[#0A0A0A] rounded-2xl border border-indigo-500/30 p-8 flex flex-col relative shadow-[0_0_30px_rgba(99,102,241,0.1)]">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            whileHover={{ y: -4 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.075, y: { duration: 0.2 } }}
+            className="bg-[#0A0A0A] rounded-2xl border border-indigo-500/30 p-8 flex flex-col relative animate-border-glow"
+          >
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold tracking-wide">
               Most Popular
             </div>
@@ -54,10 +77,17 @@ export default function PricingSection() {
                 </li>
               ))}
             </ul>
-          </div>
+          </motion.div>
           
           {/* Enterprise */}
-          <div className="bg-[#0A0A0A] rounded-2xl border border-white/5 p-8 flex flex-col">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            whileHover={{ y: -4 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.15, y: { duration: 0.2 } }}
+            className="bg-[#0A0A0A] rounded-2xl border border-white/5 p-8 flex flex-col"
+          >
             <h3 className="text-xl font-semibold text-zinc-100 mb-2">Enterprise</h3>
             <div className="mb-6">
               <span className="text-4xl font-bold text-white">Custom</span>
@@ -74,7 +104,7 @@ export default function PricingSection() {
                 </li>
               ))}
             </ul>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

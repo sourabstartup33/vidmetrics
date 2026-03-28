@@ -226,7 +226,9 @@ function DashboardContent() {
           {/* Main content */}
           {!loading && channel && (
             <div>
-              <ChannelHeader channel={channel} />
+              <div className="transition-opacity duration-300 animate-in fade-in">
+                <ChannelHeader channel={channel} />
+              </div>
 
               {/* Demo banner */}
               {isDemoMode && !demoBannerDismissed && (
@@ -327,14 +329,15 @@ function DashboardContent() {
                 </div>
               )}
 
-              {/* ══ TAB 2: INTELLIGENCE BRIEF ════════════════════════ */}
               {activeTab === 'intelligence' && (
-                <IntelligenceBrief
-                  recentVideos={recentVideos}
-                  extendedVideos={extendedVideos}
-                  insights={insights}
-                  loading={false}
-                />
+                <div className="animate-in fade-in duration-200">
+                  <IntelligenceBrief
+                    recentVideos={recentVideos}
+                    extendedVideos={extendedVideos}
+                    insights={insights}
+                    loading={false}
+                  />
+                </div>
               )}
             </div>
           )}

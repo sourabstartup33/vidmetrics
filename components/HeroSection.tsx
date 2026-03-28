@@ -101,17 +101,17 @@ export default function HeroSection() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0 }}
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-xs font-medium text-indigo-300 mb-8 shadow-[0_0_15px_rgba(99,102,241,0.2)]"
         >
           <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
-          🚀 V2 with AI-powered insights — coming soon <ChevronRight className="w-3 h-3" />
+          V2 with AI-powered insights — coming soon <ChevronRight className="w-3 h-3" />
         </motion.div>
         
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 text-gradient"
         >
           The new standard for <br className="hidden md:block" />YouTube analytics.
@@ -120,7 +120,7 @@ export default function HeroSection() {
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
           className="text-base sm:text-lg md:text-xl text-zinc-400 mb-10 max-w-2xl mx-auto tracking-tight px-2"
         >
           Track competitors, surface viral trends, and make data-driven decisions at the speed of thought. Built for creators who treat their channel like a business.
@@ -130,7 +130,7 @@ export default function HeroSection() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
           className="mb-8 max-w-2xl mx-auto"
         >
           <form onSubmit={handleAnalyze} className="flex flex-col sm:flex-row gap-2">
@@ -146,42 +146,48 @@ export default function HeroSection() {
                 placeholder="youtube.com/@MrBeast or @handle"
               />
             </div>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ duration: 0.15 }}
               type="submit"
-              className="w-full sm:w-auto px-6 py-4 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-all text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] whitespace-nowrap min-h-[44px]"
+              className="btn-primary w-full sm:w-auto px-6 py-4 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-all text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] whitespace-nowrap min-h-[44px]"
             >
               Analyze <ArrowRight className="w-4 h-4" />
-            </button>
+            </motion.button>
           </form>
           {inputError && (
             <p className="mt-2 text-sm text-red-400 text-left pl-1">{inputError}</p>
           )}
           <p className="mt-2 text-xs text-zinc-500 text-left pl-1">
-            Try: @MrBeast · @mkbhd · @PewDiePie
+            Try: @MrBeast · @mkbhd · @tseries
           </p>
         </motion.div>
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <Link href="/signup" className="w-full sm:w-auto px-8 py-3.5 bg-white/10 text-white font-medium rounded-full hover:bg-white/20 transition-all flex items-center justify-center gap-2 border border-white/10">
-            Get started for free
-          </Link>
-          <Link href="/dashboard" className="w-full sm:w-auto px-8 py-3.5 glass-panel text-white font-medium rounded-full hover:bg-white/10 transition-all flex items-center justify-center gap-2 group">
-            <Play className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
-            View live demo
-          </Link>
+          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} className="w-full sm:w-auto">
+            <Link href="/signup" className="w-full sm:w-auto px-8 py-3.5 bg-white/10 text-white font-medium rounded-full hover:bg-white/20 transition-all flex items-center justify-center gap-2 border border-white/10">
+              Get started for free
+            </Link>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} className="w-full sm:w-auto">
+            <Link href="/dashboard" className="w-full sm:w-auto px-8 py-3.5 glass-panel text-white font-medium rounded-full hover:bg-white/10 transition-all flex items-center justify-center gap-2 group">
+              <Play className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
+              View live demo
+            </Link>
+          </motion.div>
         </motion.div>
       </div>
 
-      {/* Dashboard Preview — Desktop only */}
       <motion.div 
-        initial={{ opacity: 0, y: 40, scale: 0.98 }}
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
         className="mt-24 w-full max-w-5xl mx-auto px-4 relative z-10 perspective-[2000px] hidden sm:block"
         style={{ transformOrigin: 'top center', marginBottom: '-10%' }}
       >

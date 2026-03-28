@@ -1,9 +1,18 @@
+'use client';
+
 import Link from 'next/link';
+import { motion } from 'motion/react';
 import { Play, Twitter, Linkedin, Github } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="bg-black border-t border-white/5 pt-16 pb-8">
+    <motion.footer 
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="bg-black border-t border-white/5 pt-16 pb-8"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-16">
           <div className="col-span-2">
@@ -65,6 +74,6 @@ export default function Footer() {
           </div>
         </div>
       </div>
-    </footer>
+    </motion.footer>
   );
 }
