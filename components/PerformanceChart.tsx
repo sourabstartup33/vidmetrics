@@ -76,6 +76,12 @@ function CustomTooltip({
   );
 }
 
+// Returns true on phones/tablets that have no hover capability
+function isTouchOnly(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(hover: none)').matches;
+}
+
 export default function PerformanceChart({ videos, loading }: PerformanceChartProps) {
   const [metric, setMetric] = useState<MetricType>('views');
 
@@ -117,6 +123,23 @@ export default function PerformanceChart({ videos, loading }: PerformanceChartPr
       title: v.title,
       metricValue: METRIC_CONFIG[metric].accessor(v),
     }));
+
+  // ── Fix 1: single / sparse data ──────────────────────────────
+  // recharts renders a lone circle for ≤2 points even with dot={false}
+  // because there is no line segment to draw. Show an explicit styled
+  // dot in those cases so it looks intentional, not broken.
+  const dotStyle = chartData.length <= 2
+    ? { r: 4, fill: '#6366F1', stroke: '#0A0A0A', strokeWidth: 2 }
+    : false;
+
+  // ── Fix 2: mobile activeDot persistence ──────────────────────
+  // Touch screens have no "mouse leave", so the activeDot that
+  // recharts draws on tap never dismisses — it floats on screen.
+  // Disable activeDot on touch-only devices; hover tooltips on
+  // desktop/trackpad continue to work normally.
+  const activeDotStyle = isTouchOnly()
+    ? false
+    : { r: 4, fill: '#6366F1', stroke: '#0A0A0A', strokeWidth: 2 };
 
   return (
     <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-4 sm:p-6">
@@ -177,8 +200,8 @@ export default function PerformanceChart({ videos, loading }: PerformanceChartPr
               stroke="#6366F1"
               strokeWidth={2}
               fill="url(#gPerf)"
-              dot={false}
-              activeDot={{ r: 4, fill: '#6366F1' }}
+              dot={dotStyle}
+              activeDot={activeDotStyle}
             />
           </AreaChart>
         </ResponsiveContainer>
