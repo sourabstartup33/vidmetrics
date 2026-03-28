@@ -16,6 +16,7 @@ const API_KEYS = [
   process.env.NEXT_PUBLIC_YOUTUBE_API_KEY_2,
   process.env.NEXT_PUBLIC_YOUTUBE_API_KEY_3,
   process.env.NEXT_PUBLIC_YOUTUBE_API_KEY_4,
+  process.env.NEXT_PUBLIC_YOUTUBE_API_KEY_5,
   // Legacy single-key fallback — included so old setups still work
   process.env.NEXT_PUBLIC_YOUTUBE_API_KEY,
 ].filter(
@@ -26,6 +27,12 @@ const API_KEYS = [
 
 // Deduplicate in case the same key appears more than once
 const UNIQUE_API_KEYS = [...new Set(API_KEYS)];
+
+if (isDev) {
+  console.log(
+    `[YouTube API] ${UNIQUE_API_KEYS.length} keys loaded. Daily quota: ${UNIQUE_API_KEYS.length * 10_000} units.`
+  );
+}
 
 
 
