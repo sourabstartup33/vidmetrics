@@ -8,7 +8,7 @@ import AuthLayout from '@/components/AuthLayout';
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('demo@vidmetrics.io');
-  const [password, setPassword] = useState('demo123');
+  const [password, setPassword] = useState('VidMetrics@2026');
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

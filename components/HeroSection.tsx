@@ -105,7 +105,7 @@ export default function HeroSection() {
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-xs font-medium text-indigo-300 mb-8 shadow-[0_0_15px_rgba(99,102,241,0.2)]"
         >
           <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
-          VidMetrics 2.0 is now live <ChevronRight className="w-3 h-3" />
+          🚀 V2 with AI-powered insights — coming soon <ChevronRight className="w-3 h-3" />
         </motion.div>
         
         <motion.h1 

@@ -10,7 +10,7 @@ export default function SignupPage() {
   const [name, setName] = useState('Jordan');
   const [email, setEmail] = useState('jordan@vidmetrics.io');
   const [company, setCompany] = useState('VidMetrics');
-  const [password, setPassword] = useState('demo123');
+  const [password, setPassword] = useState('VidMetrics@2026');
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
