@@ -8,6 +8,8 @@ import ChannelHeader from '@/components/ChannelHeader';
 import VideoTable from '@/components/VideoTable';
 import PerformanceChart from '@/components/PerformanceChart';
 import QuickStats from '@/components/QuickStats';
+import ViewsOverTime from '@/components/AreaChart';
+import TopEngagementBar from '@/components/BarChart';
 import IntelligenceBrief from '@/components/IntelligenceBrief';
 import EmptyState from '@/components/EmptyState';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -305,7 +307,13 @@ function DashboardContent() {
                       {/* BLOCK 1: Performance Chart */}
                       <PerformanceChart videos={chartVideos} loading={tabLoading} />
 
-                      {/* BLOCK 2: Quick Stats */}
+                      {/* BLOCK 2: Views Over Time + Top Engagement 2-col grid */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <ViewsOverTime videos={tableVideos} />
+                        <TopEngagementBar videos={tableVideos} />
+                      </div>
+
+                      {/* BLOCK 3: Quick Stats */}
                       <QuickStats videos={tableVideos} loading={tabLoading} />
 
                       {/* BLOCK 3: Video Table — always latest 20 uploads, independent of time filter */}
