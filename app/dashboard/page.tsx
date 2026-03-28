@@ -39,7 +39,10 @@ function DashboardContent() {
   const [timeframe, setTimeframe]   = useState<Timeframe>('Latest');
 
   // Per-channel cache for each time filter tab
-  const tabCache = useRef<Partial<Record<Timeframe, Video[]>>>({});
+  const tabCache = useRef<Partial<Record<Timeframe, Video[]>>>({})
+
+  // Monotonically-increasing ID — lets us discard stale in-flight responses
+  const activeRequestId = useRef<number>(0);
 
   // Chart: chronological (oldest → newest)
   const chartVideos = useMemo(
@@ -56,7 +59,9 @@ function DashboardContent() {
     setInputError('');
     setLastFetchUrl(url);
     setTimeframe('Latest');
+    // Clear per-channel cache and reset request counter when analyzing a new channel
     tabCache.current = {};
+    activeRequestId.current = 0;
 
     try {
       const result = await analyzeChannel(url, 'Latest');
@@ -98,25 +103,49 @@ function DashboardContent() {
   // ── Time-filter tab fetch ─────────────────────────────────────
   const handleTimeframeChange = useCallback(async (newTimeframe: Timeframe) => {
     if (!channel) return;
-    
+
     setTimeframe(newTimeframe);
 
-    // Cache hit
-    if (tabCache.current[newTimeframe]) {
-      setTableVideos(tabCache.current[newTimeframe]!);
+    // ── Cache hit ──────────────────────────────────────────────
+    const cached = tabCache.current[newTimeframe];
+    console.log('[Cache] Getting:', newTimeframe, 'cached:', cached?.length ?? null);
+    if (cached) {
+      console.log('[Cache] HIT for', newTimeframe);
+      setTableVideos(cached);
       return;
     }
+
+    // ── Generate unique request ID ─────────────────────────────
+    // Increment BEFORE the async call so any later tab-click bumps the counter
+    // and this response will self-discard when it eventually resolves.
+    const requestId = ++activeRequestId.current;
 
     setTabLoading(true);
     try {
       const videos = await fetchTableVideosForTab(channel.id, newTimeframe);
-        
+
+      // Guard: discard if a newer request has since been issued
+      if (requestId !== activeRequestId.current) {
+        console.log('[Race] Discarding stale response for', newTimeframe,
+          '(requestId:', requestId, 'active:', activeRequestId.current, ')');
+        return;
+      }
+
+      console.log('[Cache] MISS — fetched', videos.length, 'videos for', newTimeframe);
+      console.log('[Cache] Setting:', newTimeframe, 'videos:', videos.length);
       tabCache.current[newTimeframe] = videos;
       setTableVideos(videos);
+
     } catch (err) {
+      // Discard error from a superseded request too
+      if (requestId !== activeRequestId.current) return;
       console.error('Tab fetch failed:', err);
+      setTableVideos([]);
     } finally {
-      setTabLoading(false);
+      // Only clear the spinner for the request that is still "active"
+      if (requestId === activeRequestId.current) {
+        setTabLoading(false);
+      }
     }
   }, [channel]);
 
