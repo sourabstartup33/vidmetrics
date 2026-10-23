@@ -56,6 +56,7 @@ export function calcEngagement(
 export function calcTrendingScore(
   video: Video,
   channelAvgViews: number,
+  now: number = Date.now(),
 ): number {
   // Normalize engagement: 0% → 0, 10%+ → 65
   const base = Math.min((video.engagementRate / 10) * 65, 65);
@@ -64,7 +65,7 @@ export function calcTrendingScore(
 
   // Recency boost
   const daysSincePublish = Math.floor(
-    (Date.now() - new Date(video.publishedAt).getTime()) / (1000 * 60 * 60 * 24),
+    (now - new Date(video.publishedAt).getTime()) / (1000 * 60 * 60 * 24),
   );
   if (daysSincePublish <= 30) score += 20;
 

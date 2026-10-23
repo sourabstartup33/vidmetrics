@@ -18,73 +18,33 @@ export default function SignupPage() {
   };
 
   return (
-    <AuthLayout 
-      title="Create your account" 
-      subtitle="Start your 14-day free trial. No credit card required."
-    >
-      <div className="mb-6 p-3 bg-[#EFF6FF] border border-[#BFDBFE] rounded-lg text-sm text-blue-800 font-medium">
-        👋 Demo mode — fields are pre-filled. Just hit Create Account.
-      </div>
+    <AuthLayout title="Create your account" subtitle="Start your 14-day free trial. No credit card required.">
+      <p className="auth__notice">This is a demo: the fields are filled in, so just create the account.</p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="auth__fields">
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1.5">Full Name</label>
-          <input 
-            type="text" 
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 bg-[#0A0A0A] rounded-lg border border-white/10 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-            placeholder="Jane Doe"
-          />
+          <label htmlFor="signup-name">Full name</label>
+          <input id="signup-name" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your name" autoComplete="name" />
         </div>
-        
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1.5">Work Email</label>
-          <input 
-            type="email" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 bg-[#0A0A0A] rounded-lg border border-white/10 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-            placeholder="jane@company.com"
-          />
+          <label htmlFor="signup-email">Work email</label>
+          <input id="signup-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" autoComplete="email" />
         </div>
-        
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1.5">Company Name</label>
-          <input 
-            type="text" 
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            className="w-full px-4 py-3 bg-[#0A0A0A] rounded-lg border border-white/10 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-            placeholder="Acme Corp"
-          />
+          <label htmlFor="signup-company">Company</label>
+          <input id="signup-company" type="text" value={company} onChange={e => setCompany(e.target.value)} placeholder="Your company" autoComplete="organization" />
         </div>
-        
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1.5">Password</label>
-          <input 
-            type="password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 bg-[#0A0A0A] rounded-lg border border-white/10 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-            placeholder="••••••••"
-          />
+          <label htmlFor="signup-password">Password</label>
+          <input id="signup-password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
         </div>
-        
-        <button 
-          type="submit" 
-          className="w-full py-3 px-4 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition-colors mt-4 text-sm"
-        >
-          Create Free Account
+        <button type="submit" className="auth__submit">
+          Create account
         </button>
       </form>
-      
-      <p className="mt-6 text-center text-sm text-zinc-400">
-        Already have an account? <Link href="/login" className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">Sign in</Link>
-      </p>
-      
-      <p className="mt-8 text-center text-xs text-zinc-500">
-        By creating an account, you agree to our <a href="#" className="underline hover:text-zinc-300 transition-colors">Terms of Service</a> and <a href="#" className="underline hover:text-zinc-300 transition-colors">Privacy Policy</a>.
+
+      <p className="auth__switch">
+        Already have an account? <Link href="/login" className="app-link">Log in</Link>
       </p>
     </AuthLayout>
   );

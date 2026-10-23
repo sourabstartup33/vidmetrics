@@ -2,20 +2,18 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertCircle, Loader2, X, RefreshCw, Info } from 'lucide-react';
-import DashboardNav from '@/components/DashboardNav';
-import ChannelHeader from '@/components/ChannelHeader';
+import { AlertCircle, BadgeCheck, Loader2, RefreshCw, X } from 'lucide-react';
+import AppShell from '@/components/app/AppShell';
 import VideoTable from '@/components/VideoTable';
-import PerformanceChart from '@/components/PerformanceChart';
-import QuickStats from '@/components/QuickStats';
-import ViewsOverTime from '@/components/AreaChart';
-import TopEngagementBar from '@/components/BarChart';
+import UploadsChart from '@/components/app/UploadsChart';
+import { EngagementRanking, KpiStrip, KpiStripSkeleton, TopUploads, ViewsByDay } from '@/components/app/OverviewBlocks';
 import IntelligenceBrief from '@/components/IntelligenceBrief';
-import EmptyState from '@/components/EmptyState';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Channel, Video, Insight, Timeframe } from '@/types';
 import { analyzeChannel, getErrorMessage, fetchTableVideosForTab } from '@/lib/youtube';
 import { generateInsights } from '@/lib/insights';
+import { computeBestDay, topByViews } from '@/lib/brief';
+import { calcChannelAvgViews, formatNumber } from '@/lib/utils';
 
 type TabOption = 'overview' | 'intelligence';
 
@@ -37,7 +35,10 @@ function DashboardContent() {
   const [lastFetchUrl, setLastFetchUrl] = useState('');
 
   // ── Tab / time-filter state ──────────────────────────────────
-  const [activeTab,  setActiveTab]  = useState<TabOption>('overview');
+  const [activeTab,  setActiveTab]  = useState<TabOption>(
+    searchParams.get('tab') === 'intelligence' ? 'intelligence' : 'overview',
+  );
+  const [updatedAt,  setUpdatedAt]  = useState('');
   const [timeframe, setTimeframe]   = useState<Timeframe>('Latest');
 
   // Per-channel cache for each time filter tab
@@ -77,11 +78,13 @@ function DashboardContent() {
 
       setInsights(generateInsights(result));
       setIsDemoMode(isDemo);
+      setUpdatedAt(new Date(result.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       document.title = `${result.channel.title} — VidMetrics`;
 
       // Sync browser URL so refresh reloads the correct channel
       const handle = result.channel.handle || url;
-      const newUrl = `/dashboard?channel=${encodeURIComponent(handle)}`;
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      const newUrl = `/dashboard?channel=${encodeURIComponent(handle)}${tab ? `&tab=${tab}` : ''}`;
       window.history.replaceState({}, '', newUrl);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'NETWORK_ERROR';
@@ -91,9 +94,9 @@ function DashboardContent() {
       setTableVideos([]);
       setInsights([]);
       if (msg === 'INVALID_URL') {
-        setInputError('Please enter a valid YouTube channel URL');
+        setInputError('That doesn’t look like a YouTube channel. Paste a channel link or an @handle.');
       } else if (msg === 'CHANNEL_NOT_FOUND') {
-        setError('Channel not found. Check the URL and try again.');
+        setError('No channel matches that link or handle. Check it and try again.');
       } else {
         setError(getErrorMessage(msg));
       }
@@ -165,195 +168,232 @@ function DashboardContent() {
     doFetch(url, false);
   }, [doFetch]);
 
-  const TIME_FILTERS: Timeframe[] = ['Latest', '7D', '28D', '3M', '1Y'];
+  const TIME_FILTERS: { key: Timeframe; label: string }[] = [
+    { key: 'Latest', label: 'Latest 20' },
+    { key: '7D', label: '7 days' },
+    { key: '28D', label: '28 days' },
+    { key: '3M', label: '3 months' },
+    { key: '1Y', label: '1 year' },
+  ];
+  const rangeLabel = TIME_FILTERS.find(t => t.key === timeframe)?.label ?? 'Latest 20';
+
+  // The screen's one finding: their top upload against their average, and their best day
+  const finding = useMemo(() => {
+    if (!recentVideos.length) return null;
+    const avg = calcChannelAvgViews(recentVideos);
+    const top = topByViews(recentVideos, 1)[0];
+    const best = computeBestDay(extendedVideos.length ? extendedVideos : recentVideos);
+    return { avg, top, times: avg ? top.views / avg : 0, best };
+  }, [recentVideos, extendedVideos]);
+
+  const selectTab = (tab: TabOption) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(window.location.search);
+    if (tab === 'intelligence') params.set('tab', 'intelligence');
+    else params.delete('tab');
+    window.history.replaceState({}, '', `/dashboard?${params.toString()}`);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-black text-white selection:bg-indigo-500/30 font-sans overflow-x-hidden">
-      <DashboardNav onAnalyze={handleNavAnalyze} isLoading={loading} />
+    <AppShell title={channel?.title ?? 'Channel analysis'} onAnalyze={handleNavAnalyze} isLoading={loading}>
+      {inputError && (
+        <div className="app-error" role="alert" style={{ marginBottom: 16 }}>
+          <AlertCircle className="w-4 h-4" aria-hidden="true" />
+          <span>{inputError}</span>
+        </div>
+      )}
 
-      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
-        <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(99,102,241,0.06)_0%,transparent_70%)] pointer-events-none z-0" />
-        <div className="fixed inset-0 bg-[url('/noise.png')] opacity-15 mix-blend-overlay pointer-events-none z-0" />
-
-        <div className="relative z-10">
-
-          {/* Input error */}
-          {inputError && (
-            <p className="mb-4 text-sm text-red-400 flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />{inputError}
-            </p>
-          )}
-
-          {/* Full page error */}
-          {error && !loading && !channel && (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
-                <AlertCircle className="w-8 h-8 text-red-400" />
+      {/* ── Loading: the final layout, values as flat bars ── */}
+      {loading && (
+        <div aria-busy="true" aria-label="Loading channel">
+          <div className="app-title">
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <span className="app-avatar app-skel" />
+              <div>
+                <h1><span className="app-skel" style={{ width: 160, height: 24 }}>Loading</span></h1>
+                <p className="app-title__finding"><span className="app-skel" style={{ width: 360, height: 14 }} /></p>
               </div>
-              <EmptyState icon="😵" title="Unable to load channel data" message={error} />
+            </div>
+          </div>
+          <div className="app-tabs" aria-hidden="true">
+            <button type="button" aria-selected="true">Overview</button>
+            <button type="button">Intelligence brief</button>
+          </div>
+          <KpiStripSkeleton />
+          <div className="app-row app-row--main">
+            <div className="app-panel" style={{ height: 352 }} />
+            <div className="app-panel" style={{ height: 352 }} />
+          </div>
+        </div>
+      )}
+
+      {/* ── The channel failed to load ── */}
+      {error && !loading && !channel && (
+        <div>
+          <div className="app-title">
+            <h1>Channel analysis</h1>
+          </div>
+          <div className="app-error" role="alert" style={{ marginTop: 16, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <AlertCircle className="w-4 h-4" aria-hidden="true" />
+              <span>{error}</span>
+            </span>
+            <button
+              type="button"
+              className="app-button app-button--text"
+              onClick={() => lastFetchUrl && doFetch(lastFetchUrl, lastFetchUrl === '@MrBeast')}
+            >
+              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!loading && channel && (
+        <div>
+          {/* ── Title row: the channel, and the finding ── */}
+          <div className="app-title">
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minWidth: 0 }}>
+              <span className="app-avatar" aria-hidden="true">{channel.title.slice(0, 1)}</span>
+              <div style={{ minWidth: 0 }}>
+                <h1>
+                  {channel.title}
+                  {channel.verified && <BadgeCheck className="w-5 h-5" aria-label="Verified channel" style={{ color: 'var(--app-muted)' }} />}
+                  <span className="app-meta" style={{ fontSize: 14, fontWeight: 400 }}>{channel.handle}</span>
+                </h1>
+                {finding && (
+                  <p className="app-title__finding">
+                    Their top upload, <strong>{finding.top.title}</strong>, has{' '}
+                    <strong className="num">{finding.times.toFixed(1)}×</strong> their {formatNumber(finding.avg)} average.
+                    {finding.best && (
+                      <> {finding.best.day}s lead their posting days by <strong className="num">{finding.best.pct}%</strong>.</>
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="app-title__actions">
+              <span className="app-stamp">{isDemoMode ? 'Demo data' : `Fetched ${updatedAt}`}</span>
               <button
-                onClick={() => lastFetchUrl && doFetch(lastFetchUrl, lastFetchUrl === '@MrBeast')}
-                className="mt-4 px-5 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors text-sm flex items-center gap-2 mx-auto"
+                type="button"
+                className="app-button"
+                onClick={() => lastFetchUrl && doFetch(lastFetchUrl, isDemoMode)}
               >
-                <RefreshCw className="w-4 h-4" /> Retry
+                <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {isDemoMode && !demoBannerDismissed && (
+            <div className="app-notice" role="note">
+              <span>
+                You&rsquo;re looking at demo data for @MrBeast. Paste any channel link above to analyze a real competitor.
+              </span>
+              <button type="button" onClick={() => setDemoBannerDismissed(true)} aria-label="Dismiss notice">
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
             </div>
           )}
 
-          {/* Loading skeleton */}
-          {loading && (
-            <div className="space-y-6 animate-pulse">
-              <div className="bg-[#0A0A0A] rounded-xl border border-white/10 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                <div className="flex items-center gap-5">
-                  <div className="w-20 h-20 rounded-full bg-zinc-800" />
-                  <div className="space-y-3">
-                    <div className="h-7 w-48 bg-zinc-800 rounded-lg" />
-                    <div className="h-4 w-28 bg-zinc-800 rounded-lg" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full lg:w-auto">
-                  {[1,2,3,4].map(i => (
-                    <div key={i} className="bg-black/50 px-4 py-3 rounded-lg border border-white/5">
-                      <div className="h-3 w-16 bg-zinc-800 rounded mb-2" />
-                      <div className="h-5 w-20 bg-zinc-800 rounded" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* ── Tabs ── */}
+          <div className="app-tabs" role="tablist" aria-label="Views">
+            {(['overview', 'intelligence'] as const).map(tab => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                aria-controls={`panel-${tab}`}
+                onClick={() => selectTab(tab)}
+              >
+                {tab === 'overview' ? 'Overview' : 'Intelligence brief'}
+              </button>
+            ))}
+          </div>
 
-          {/* Main content */}
-          {!loading && channel && (
-            <div>
-              <div className="transition-opacity duration-300 animate-in fade-in">
-                <ChannelHeader channel={channel} />
-              </div>
-
-              {/* Demo banner */}
-              {isDemoMode && !demoBannerDismissed && (
-                <div className="mb-6 flex items-start sm:items-center justify-between gap-3 px-4 py-3 bg-indigo-500/10 border border-indigo-500/20 border-l-[3px] border-l-indigo-500 rounded-lg">
-                  <div className="flex items-start sm:items-center gap-3">
-                    <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5 sm:mt-0" />
-                    <p className="text-sm text-indigo-200">
-                      Demo analysis of <span className="text-white font-bold">@MrBeast</span> — paste any channel URL above to analyze your own competitor
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setDemoBannerDismissed(true)}
-                    className="shrink-0 p-1.5 text-indigo-400 hover:text-white transition-colors rounded-md hover:bg-white/10"
-                    aria-label="Dismiss demo banner"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* Tab switcher */}
-              <div className="border-b border-white/10 mb-8">
-                <div className="flex">
-                  {(['overview', 'intelligence'] as const).map(tab => (
+          {activeTab === 'overview' && (
+            <div id="panel-overview" role="tabpanel">
+              <div className="app-filters">
+                <div className="app-seg" role="group" aria-label="Time range">
+                  {TIME_FILTERS.map(t => (
                     <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={`flex-1 sm:flex-initial py-4 text-sm font-semibold uppercase tracking-wider whitespace-nowrap transition-colors relative min-h-[44px] sm:mr-8 ${
-                        activeTab === tab ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
-                      }`}
+                      key={t.key}
+                      type="button"
+                      aria-pressed={timeframe === t.key}
+                      onClick={() => handleTimeframeChange(t.key)}
+                      disabled={tabLoading}
                     >
-                      {tab === 'overview' ? 'Overview' : 'Intelligence Brief'}
-                      {activeTab === tab && (
-                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-indigo-500" />
-                      )}
+                      {t.label}
                     </button>
                   ))}
                 </div>
+                <span className="app-meta" aria-live="polite">
+                  {tabLoading ? (
+                    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> Loading {rangeLabel.toLowerCase()}
+                    </span>
+                  ) : (
+                    `${tableVideos.length} uploads in view`
+                  )}
+                </span>
               </div>
 
-              {/* ══ TAB 1: OVERVIEW ══════════════════════════════════ */}
-              {activeTab === 'overview' && (
-                <div className="animate-in fade-in duration-200 space-y-8">
+              {tabLoading ? <KpiStripSkeleton /> : <KpiStrip channel={channel} videos={tableVideos} rangeLabel={rangeLabel} />}
 
-                  {/* Time filter bar */}
-                  <div className="overflow-x-auto -mx-2 px-2 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
-                    <div className="flex items-center gap-2">
-                      {TIME_FILTERS.map(t => (
-                        <button
-                          key={t}
-                          onClick={() => handleTimeframeChange(t)}
-                          disabled={tabLoading}
-                          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50 min-h-[44px] ${
-                            timeframe === t
-                              ? 'bg-indigo-500 text-white'
-                              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                          }`}
-                        >
-                          {t}
-                        </button>
-                      ))}
-                      {tabLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin ml-1" />}
-                    </div>
+              {!tabLoading && tableVideos.length === 0 ? (
+                <div className="app-row">
+                  <div className="app-empty" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <span>No uploads in the last {rangeLabel.toLowerCase()}.</span>
+                    <button type="button" className="app-button app-button--text" onClick={() => handleTimeframeChange('Latest')}>
+                      Show the latest 20
+                    </button>
                   </div>
-
-                  {/* Empty state for time-filtered tabs with no results */}
-                  {!tabLoading && tableVideos.length === 0 ? (
-                    <div className="bg-[#0A0A0A] rounded-xl border border-white/10">
-                      <EmptyState
-                        icon="📭"
-                        title="No videos found in this time period"
-                        message="No uploads found in this time range"
-                        action={{ label: 'View Latest', onClick: () => handleTimeframeChange('Latest') }}
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      {/* BLOCK 1: Performance Chart */}
-                      <PerformanceChart videos={chartVideos} loading={tabLoading} />
-
-                      {/* BLOCK 2: Views Over Time + Top Engagement 2-col grid */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <ViewsOverTime videos={tableVideos} />
-                        <TopEngagementBar videos={tableVideos} />
-                      </div>
-
-                      {/* BLOCK 3: Quick Stats */}
-                      <QuickStats videos={tableVideos} loading={tabLoading} />
-
-                      {/* BLOCK 3: Video Table — always latest 20 uploads, independent of time filter */}
-                      <VideoTable
-                        videos={recentVideos}
-                        loading={loading}
-                        channelUrl={channel ? `https://www.youtube.com/${channel.handle}/videos` : undefined}
-                      />
-                    </>
-                  )}
                 </div>
+              ) : (
+                <>
+                  <div className="app-row app-row--main">
+                    {tabLoading ? <div className="app-panel" style={{ height: 352 }} /> : <UploadsChart videos={chartVideos} rangeLabel={rangeLabel} />}
+                    {tabLoading ? <div className="app-panel" style={{ height: 352 }} /> : <TopUploads videos={tableVideos} />}
+                  </div>
+                  <div className="app-row app-row--half">
+                    <EngagementRanking videos={tableVideos} />
+                    <ViewsByDay videos={extendedVideos.length ? extendedVideos : recentVideos} />
+                  </div>
+                </>
               )}
 
-              {activeTab === 'intelligence' && (
-                <div className="animate-in fade-in duration-200">
-                  <IntelligenceBrief
-                    recentVideos={recentVideos}
-                    extendedVideos={extendedVideos}
-                    insights={insights}
-                    loading={false}
-                  />
-                </div>
-              )}
+              {/* The table always lists the latest 20 uploads, whatever the range above */}
+              <div className="app-row">
+                <VideoTable
+                  videos={recentVideos}
+                  loading={loading}
+                  channelUrl={channel ? `https://www.youtube.com/${channel.handle}/videos` : undefined}
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'intelligence' && (
+            <div id="panel-intelligence" role="tabpanel">
+              <IntelligenceBrief
+                recentVideos={recentVideos}
+                extendedVideos={extendedVideos}
+                insights={insights}
+                loading={false}
+              />
             </div>
           )}
         </div>
-      </main>
-    </div>
+      )}
+    </AppShell>
   );
 }
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<div className="app" aria-busy="true" />}>
       <ErrorBoundary fallbackMessage="The dashboard encountered an error. Please try again or refresh the page.">
         <DashboardContent />
       </ErrorBoundary>

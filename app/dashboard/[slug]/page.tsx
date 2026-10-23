@@ -1,65 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Construction, Bell, CheckCircle } from 'lucide-react';
-import DashboardNav from '@/components/DashboardNav';
+import AppShell from '@/components/app/AppShell';
 
-const featureNames: Record<string, string> = {
-  competitors: 'Competitor Tracking',
-  reports: 'Reports',
-  trends: 'Trend Intelligence',
-  exports: 'Exports Hub',
-  settings: 'Settings',
+const features: Record<string, { name: string; what: string }> = {
+  competitors: {
+    name: 'Competitors',
+    what: 'Save the channels you watch and see them side by side, with each one’s latest uploads scored the same way.',
+  },
+  reports: {
+    name: 'Reports',
+    what: 'A weekly brief on every saved competitor, ready to share with the team on Monday morning.',
+  },
+  trends: {
+    name: 'Trends',
+    what: 'Formats, lengths and title patterns rising across the channels you track.',
+  },
+  exports: {
+    name: 'Exports',
+    what: 'Every CSV you have downloaded, and scheduled exports to a shared drive.',
+  },
+  settings: {
+    name: 'Settings',
+    what: 'Your workspace, members, API keys and plan.',
+  },
 };
 
 export default function ComingSoonPage() {
   const { slug } = useParams<{ slug: string }>();
-  const featureName = featureNames[slug] ?? 'This feature';
-  const [notified, setNotified] = useState(false);
+  const feature = features[slug] ?? { name: 'This screen', what: 'This part of VidMetrics is not built yet.' };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans">
-      <DashboardNav />
-      <div className="flex">
-        <main className="flex-1 flex items-center justify-center h-[calc(100vh-4rem)] p-8">
-          <div className="text-center max-w-md">
-            {/* Icon */}
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 mb-6">
-              <Construction className="w-10 h-10 text-indigo-400" />
-            </div>
-
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              Coming in v2
-            </div>
-
-            <h1 className="text-2xl font-extrabold text-white mb-3">
-              {featureName}
-            </h1>
-            <p className="text-zinc-400 text-sm leading-relaxed mb-8">
-              This feature is coming in v2. Currently in development.
-            </p>
-
-            {/* Notify me */}
-            {notified ? (
-              <div className="flex items-center justify-center gap-2 text-emerald-400 text-sm font-medium">
-                <CheckCircle className="w-4 h-4" />
-                You&apos;ll be notified when it launches!
-              </div>
-            ) : (
-              <button
-                onClick={() => setNotified(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm font-medium rounded-xl transition-all"
-              >
-                <Bell className="w-4 h-4 text-zinc-400" />
-                Notify me when it&apos;s ready
-              </button>
-            )}
-          </div>
-        </main>
+    <AppShell title={feature.name}>
+      <div className="app-title">
+        <div>
+          <h1>{feature.name}</h1>
+          <p className="app-title__finding">{feature.what}</p>
+        </div>
       </div>
-    </div>
+      <div className="app-row">
+        <div className="app-empty" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span>Not in this version yet. Channel analysis and the Intelligence brief work today.</span>
+          <Link href="/dashboard" className="app-button">
+            Open channel analysis
+          </Link>
+        </div>
+      </div>
+    </AppShell>
   );
 }
