@@ -186,54 +186,53 @@ Top three problems:
 
 ---
 
-# Outcome: the redesign
+# Outcome: restore and polish
 
-Built with the `design-taste-frontend` skill, measured the same way as the audit above
-(`inspect.mjs` at 1440, 768 and 390px on the production build; screenshots in `.taste-skill/after/`,
-which is git-ignored).
+A first redesign replaced the whole look (candy-coloured chapter fields on the page, a light framed
+sheet in the app). It passed the inspector but read as a consumer brand rather than enterprise
+analytics, so it was rolled back. The original dark, indigo design is restored and polished in
+place: same layout, same components, same brand.
 
-## Before and after
+## What changed
 
-| | Before | After |
-| --- | --- | --- |
-| Landing inspector | 15 FAIL, 4 WARN | **0 FAIL**, 5 WARN |
-| Dashboard inspector (app rules) | 5 FAIL, 5 WARN | **0 FAIL, 0 WARN** |
-| Intelligence Brief (app rules) | not measured | **0 FAIL, 0 WARN** |
-| Source lint | 151 FAIL, 47 WARN | **0 FAIL** (page rules on `components/landing`, app rules on the app) |
-| Landing body text | 14px grey sans | 19px Source Serif 4 in full ink |
-| Hero headline | 96px gradient text, 6 words | 187px solid ink, 3 words, 2 lines at every width |
-| Dashboard labels | 19 tracked uppercase labels at 10px | sentence case, 12–13px, none under 12px |
-| Table numbers | 60 of 60 left-aligned, 30% tabular | right-aligned, all tabular |
-| Invented proof | 3 testimonials, 5 fake logos, "500+ teams" | none |
+**Honesty**
+- The three invented testimonials, pravatar faces and the "Acme Corp…" logo row are replaced by
+  "What a brief tells you": three real findings from the sample brief on the demo channel.
+- "500+ enterprise content teams" and the avatar row on login and signup are gone.
+- The hero pill no longer calls the AI summary "coming soon": it ships.
+- The hero mock-up shows figures the demo channel really produces (2.2× average, 3.80%
+  engagement, a 59/100 top score) instead of invented ones (94/100, "+12.4% this month", 🔥).
+- Feature copy says what the product does ("latest 50 uploads", time ranges and sorting, the AI
+  brief) instead of "millisecond precision", "entire video history" and a content-type filter that
+  does not exist.
+- Dead `#` links are removed from the footer, login ("Forgot password?") and signup (terms).
 
-## Direction
+**Readability**
+- 10px uppercase labels on the dashboard and in the brief are now 12px at a lighter grey that
+  passes contrast. Footnotes and table headers moved up from `zinc-600`/`zinc-500`.
+- Feature and step descriptions are 15px in `zinc-300` instead of 14px in `zinc-400`.
 
-- **Page:** `colour-chapters` (seed 1552607546). Hero redrawn once, because the dealt hero needed a
-  landscape photograph and VidMetrics has none (the open archives were also unreachable from the
-  build environment). Pricing redrawn to "Plans that step up", because there are three plans and the
-  dealt blueprint holds one.
-- **App:** `framed-sheet` (seed 1777936196). Kept the dealt palette and type from the page.
-- **Idea:** the page is a brief on one competitor. Each colour chapter is one of its answers (the
-  video that won, the length that wins, the day to post, the title formula, where they're open, what
-  to do Monday), shown as the product's own card.
-- **Live thing:** "Score a video". Views, likes, comments and upload age run through the product's
-  real `calcTrendingScore`, and the row downloads as CSV.
-- **App face:** the page's magenta, darkened to 4.8:1, as the one data hue on the main series. The
-  signature element is views per upload on a true time axis, with the top upload marked.
+**Data drawn honestly**
+- Line charts use straight segments instead of smoothed curves that invented values between
+  uploads.
+- The top-5 engagement bars carry value labels (their differences are hundredths of a percent),
+  and inactive bars are visible against the panel.
+- "Hot content", which always read 0% because the trending score rarely passes 70, is now
+  "Above average": the uploads that beat the channel's average views.
+- The video table right-aligns every figure in tabular numerals and gives titles room to read.
+- The demo channel's average is computed from its rows, and its videos have realistic lengths, so
+  the "winning format" analysis means something.
 
-## Still short
-
-- **No photographs or footage** on the landing page (inspector WARN `no-real-pictures`). Every
-  picture is a fragment of the real interface. A real screenshot or a short screen recording of the
-  dashboard on a live channel would be the best addition.
-- **Trending score ceiling.** At a typical 3–4% engagement a video tops out around 60, so the
-  "over 70" band is rare. This is product logic, not design, and it is unchanged.
+**Broken and missing pieces**
+- Thumbnails and the channel avatar fall back to a plain slot or initial when they fail to load.
+- The broken pravatar profile picture and the fake unread dot are gone from the dashboard nav.
+- The `/noise.png` texture that does not exist is no longer requested.
+- Emoji empty states (😵, 📭) use icons.
+- The AI summary says plainly when it is off because no Gemini key is set.
+- The table's "Watch" link is visible and named for screen readers, not hover-only.
 
 ## Replace before launch
 
-- `hello@vidmetrics.io` (footer and the Enterprise plan): a placeholder address.
-- The sample brief on the landing page is built from the demo data in `lib/youtube.ts`
-  (`getDemoData`), which uses MrBeast's name with illustrative numbers. Swap in a real run, or a
+- The sample findings on the landing page come from the demo data in `lib/youtube.ts`
+  (`getDemoData`), which uses MrBeast's name with illustrative numbers. Swap in a real run or a
   channel you have permission to feature.
-- Demo video durations in `getDemoData` were added for a realistic length analysis; they are
-  illustrative too.

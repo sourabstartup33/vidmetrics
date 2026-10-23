@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
-import Wordmark from '@/components/Wordmark';
+import { Play } from 'lucide-react';
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -8,32 +8,57 @@ interface AuthLayoutProps {
   subtitle: string;
 }
 
-// The first chapter's yellow field beside a plain form.
 export default function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   return (
-    <div className="auth">
-      <div className="auth__field">
-        <Link href="/" aria-label="VidMetrics home">
-          <Wordmark />
-        </Link>
-        <p className="auth__statement" aria-hidden="true">
-          <span>Their hits,</span>
-          <span>explained.</span>
-        </p>
-        <p className="auth__note">
-          Paste any YouTube channel and get a brief on what wins, when they post and where they&rsquo;re open.
-        </p>
-      </div>
-      <main className="auth__form">
-        <div className="auth__inner">
-          <Link href="/" className="auth__mobile-mark" aria-label="VidMetrics home">
-            <Wordmark />
+    <div className="min-h-screen flex bg-black text-white">
+      {/* Left side - Branding (hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-[#050505] border-r border-white/5 flex-col justify-between p-12 relative overflow-hidden">
+        {/* Animated background pattern */}
+        <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)]"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-500/10 to-transparent pointer-events-none"></div>
+        
+        <div className="relative z-10">
+          <Link href="/" className="flex items-center gap-2 mb-12">
+            <div className="bg-white p-1.5 rounded-md">
+              <Play className="w-4 h-4 text-black fill-black" />
+            </div>
+            <span className="font-semibold text-xl text-white tracking-tight">VidMetrics</span>
           </Link>
-          <h1 className="auth__title">{title}</h1>
-          <p className="auth__subtitle">{subtitle}</p>
-          {children}
+          
+          <h1 className="text-4xl font-bold text-white leading-tight mb-6 tracking-tight">
+            The intelligence layer <br />
+            for YouTube growth.
+          </h1>
+          <p className="text-lg text-zinc-400 max-w-md">
+            Paste any competitor&apos;s channel and see what&apos;s working for them, when they post and where they&apos;re open.
+          </p>
         </div>
-      </main>
+        
+        <p className="relative z-10 text-sm text-zinc-400">Built on the public YouTube Data API.</p>
+      </div>
+      
+      {/* Right side - Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-8 bg-black">
+        <div className="w-full max-w-sm">
+          {/* Mobile-only logo */}
+          <div className="lg:hidden mb-8 flex justify-center">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="bg-white p-1.5 rounded-md">
+                <Play className="w-4 h-4 text-black fill-black" />
+              </div>
+              <span className="font-semibold text-xl text-white tracking-tight">VidMetrics</span>
+            </Link>
+          </div>
+          
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">{title}</h2>
+            <p className="text-zinc-400 text-sm">{subtitle}</p>
+          </div>
+          
+          {children}
+          
+        </div>
+      </div>
     </div>
   );
 }

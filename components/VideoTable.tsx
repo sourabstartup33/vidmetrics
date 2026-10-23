@@ -1,10 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Download, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ExternalLink, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download } from 'lucide-react';
+import Image from 'next/image';
+import EngagementBadge from './EngagementBadge';
 import { Video } from '@/types';
-import { formatNumber, formatDate, parseDuration } from '@/lib/utils';
-import { VideoThumb } from '@/components/app/OverviewBlocks';
+import { formatNumber, formatDate } from '@/lib/utils';
+
+const PAGE_SIZE = 10;
 
 interface VideoTableProps {
   videos: Video[];
@@ -12,183 +15,297 @@ interface VideoTableProps {
   channelUrl?: string;
 }
 
+function TrendingDot({ score }: { score: number }) {
+  const color =
+    score > 70 ? 'bg-emerald-400 text-emerald-400' :
+    score >= 40 ? 'bg-amber-400 text-amber-400' :
+    'bg-red-400 text-red-400';
+  const dot =
+    score > 70 ? 'bg-emerald-400' :
+    score >= 40 ? 'bg-amber-400' :
+    'bg-red-400';
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+      <span className={`text-sm font-semibold tabular-nums ${color.split(' ')[1]}`}>{score}</span>
+    </div>
+  );
+}
+
+// Thumbnail with a plain grey slot when the image fails to load
+function Thumbnail({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return null;
+  return (
+    <Image
+      src={src}
+      alt=""
+      fill
+      className="object-cover"
+      sizes="96px"
+      referrerPolicy="no-referrer"
+      unoptimized
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <tr className="border-b border-white/5 animate-shimmer">
+      <td className="px-6 py-4"><div className="h-4 w-5 bg-zinc-800 rounded" /></td>
+      <td className="px-6 py-4"><div className="w-24 h-14 bg-zinc-800 rounded-md" /></td>
+      <td className="px-6 py-4">
+        <div className="h-4 w-48 bg-zinc-800 rounded mb-1.5" />
+        <div className="h-3 w-24 bg-zinc-800/60 rounded" />
+      </td>
+      <td className="px-6 py-4"><div className="h-4 w-14 bg-zinc-800 rounded" /></td>
+      <td className="px-6 py-4"><div className="h-4 w-10 bg-zinc-800 rounded" /></td>
+      <td className="px-6 py-4"><div className="h-4 w-10 bg-zinc-800 rounded" /></td>
+      <td className="px-6 py-4"><div className="h-6 w-14 bg-zinc-800 rounded-full" /></td>
+      <td className="px-6 py-4"><div className="h-4 w-10 bg-zinc-800 rounded" /></td>
+      <td className="px-6 py-4"><div className="h-4 w-20 bg-zinc-800 rounded" /></td>
+      <td className="px-6 py-4"><div className="h-6 w-6 bg-zinc-800 rounded" /></td>
+    </tr>
+  );
+}
+
 type SortColumn = 'views' | 'likes' | 'comments' | 'engagement' | 'trending' | 'published';
 
-const COLUMNS: { key: SortColumn; label: string }[] = [
-  { key: 'views', label: 'Views' },
-  { key: 'likes', label: 'Likes' },
-  { key: 'comments', label: 'Comments' },
-  { key: 'engagement', label: 'Engagement' },
-  { key: 'trending', label: 'Trending' },
-  { key: 'published', label: 'Published' },
-];
-
-// The trending band the product uses: over 70 high, 40 to 70 middle, under 40 low
-function trendingColour(score: number) {
-  return score > 70 ? 'var(--app-positive)' : score >= 40 ? '#b7791f' : 'var(--app-negative)';
-}
-
-function clock(iso: string) {
-  const s = parseDuration(iso);
-  if (!s) return '';
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = String(s % 60).padStart(2, '0');
-  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
-}
-
-function value(v: Video, key: SortColumn) {
-  switch (key) {
-    case 'views': return v.views;
-    case 'likes': return v.likes;
-    case 'comments': return v.comments;
-    case 'engagement': return v.engagementRate;
-    case 'trending': return v.trendingScore;
-    default: return new Date(v.publishedAt).getTime();
-  }
-}
-
 export default function VideoTable({ videos, loading = false, channelUrl }: VideoTableProps) {
-  const [sort, setSort] = useState<{ key: SortColumn; dir: 'asc' | 'desc' }>({ key: 'published', dir: 'desc' });
+  const [page, setPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState<{ key: SortColumn; direction: 'asc' | 'desc' }>({
+    key: 'published',
+    direction: 'desc',
+  });
 
-  const sorted = useMemo(
-    () => [...videos].sort((a, b) => (sort.dir === 'asc' ? value(a, sort.key) - value(b, sort.key) : value(b, sort.key) - value(a, sort.key))),
-    [videos, sort],
-  );
+  // Reset to page 1 whenever the dataset changes
+  useEffect(() => { setPage(1); }, [videos]);
 
-  const toggle = (key: SortColumn) =>
-    setSort(cur => ({ key, dir: cur.key === key && cur.dir === 'desc' ? 'asc' : 'desc' }));
+  const handleSort = (key: SortColumn) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc',
+    }));
+  };
+
+  const sortedVideos = useMemo(() => {
+    return [...videos].sort((a, b) => {
+      let aVal: number;
+      let bVal: number;
+
+      switch (sortConfig.key) {
+        case 'views':
+          aVal = a.views; bVal = b.views; break;
+        case 'likes':
+          aVal = a.likes; bVal = b.likes; break;
+        case 'comments':
+          aVal = a.comments; bVal = b.comments; break;
+        case 'engagement':
+          aVal = a.engagementRate; bVal = b.engagementRate; break;
+        case 'trending':
+          aVal = a.trendingScore; bVal = b.trendingScore; break;
+        case 'published':
+        default:
+          aVal = new Date(a.publishedAt).getTime();
+          bVal = new Date(b.publishedAt).getTime();
+          break;
+      }
+
+      return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+  }, [videos, sortConfig]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedVideos.length / PAGE_SIZE));
+  const start = (page - 1) * PAGE_SIZE;
+  const end = Math.min(start + PAGE_SIZE, sortedVideos.length);
+  const pageVideos = sortedVideos.slice(start, end);
 
   const exportToCSV = () => {
-    if (!videos.length) return;
+    if (videos.length === 0) return;
+    
+    // Create headers
     const headers = ['Title', 'URL', 'Published Date', 'Views', 'Likes', 'Comments', 'Engagement Rate (%)', 'Trending Score'];
-    const rows = sorted.map(v => [
-      `"${v.title.replace(/"/g, '""')}"`,
+    
+    // Create rows
+    const rows = sortedVideos.map(v => [
+      `"${v.title.replace(/"/g, '""')}"`, // escape quotes in titles
       v.url,
       v.publishedAt.split('T')[0],
       v.views,
       v.likes,
       v.comments,
       v.engagementRate,
-      v.trendingScore,
+      v.trendingScore
     ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = url;
-    link.download = `vidmetrics_export_${new Date().toISOString().split('T')[0]}.csv`;
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `vidmetrics_export_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   return (
-    <section className="app-panel" id="uploads" aria-labelledby="uploads-title" style={{ scrollMarginTop: 64 }}>
-      <div className="app-panel__head">
-        <div>
-          <h2 id="uploads-title" className="app-panel__title">Latest uploads</h2>
-          <p className="app-panel__sub">{videos.length} videos, newest first unless you sort</p>
-        </div>
-        <div className="app-title__actions">
-          {channelUrl && (
-            <a href={channelUrl} target="_blank" rel="noopener noreferrer" className="app-button app-button--text">
-              Open on YouTube
-              <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
-            </a>
-          )}
-          <button type="button" className="app-button" onClick={exportToCSV} disabled={!videos.length}>
-            <Download className="w-3.5 h-3.5" aria-hidden="true" />
+    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 shadow-sm overflow-hidden">
+      {/* Table header bar with action buttons */}
+      <div className="px-4 sm:px-6 py-3 border-b border-white/10 flex items-center justify-between gap-4 bg-[#111111]">
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Video Library</p>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={exportToCSV}
+            disabled={videos.length === 0}
+            className="flex items-center gap-1.5 text-sm font-semibold text-zinc-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-3.5 h-3.5" />
             Export CSV
           </button>
+
+          {channelUrl && (
+            <a
+              href={channelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              See All on YouTube
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
         </div>
       </div>
 
-      <div className="app-table-wrap">
-        <table className="app-table" style={{ minWidth: 760 }}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[1000px] tabular-nums">
           <thead>
-            <tr>
-              <th scope="col" style={{ width: '40%' }}>Video</th>
-              {COLUMNS.map(c => (
-                <th
-                  key={c.key}
-                  scope="col"
-                  className="num"
-                  aria-sort={sort.key === c.key ? (sort.dir === 'desc' ? 'descending' : 'ascending') : undefined}
-                >
-                  <button type="button" onClick={() => toggle(c.key)}>
-                    {c.label}
-                    {sort.key === c.key &&
-                      (sort.dir === 'desc' ? <ArrowDown className="w-3 h-3" aria-hidden="true" /> : <ArrowUp className="w-3 h-3" aria-hidden="true" />)}
-                  </button>
-                </th>
-              ))}
+            <tr className="bg-[#111111] border-b border-white/10 text-xs uppercase tracking-wider text-zinc-400 font-semibold">
+              <th className="px-4 py-4">#</th>
+              <th className="px-4 py-4">Thumbnail</th>
+              <th className="px-4 py-4 min-w-[260px]">Title</th>
+              
+              <th 
+                className="px-4 py-4 cursor-pointer hover:text-white transition-colors group text-right"
+                onClick={() => handleSort('views')}
+              >
+                <div className="flex items-center justify-end gap-1">Views {sortConfig.key === 'views' ? (sortConfig.direction === 'desc' ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50" />}</div>
+              </th>
+              
+              <th 
+                className="px-4 py-4 cursor-pointer hover:text-white transition-colors group text-right"
+                onClick={() => handleSort('likes')}
+              >
+                <div className="flex items-center justify-end gap-1">Likes {sortConfig.key === 'likes' ? (sortConfig.direction === 'desc' ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50" />}</div>
+              </th>
+              
+              <th 
+                className="px-4 py-4 hidden sm:table-cell cursor-pointer hover:text-white transition-colors group text-right"
+                onClick={() => handleSort('comments')}
+              >
+                <div className="flex items-center justify-end gap-1">Comments {sortConfig.key === 'comments' ? (sortConfig.direction === 'desc' ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50" />}</div>
+              </th>
+              
+              <th 
+                className="px-4 py-4 cursor-pointer hover:text-white transition-colors group text-right"
+                onClick={() => handleSort('engagement')}
+              >
+                <div className="flex items-center justify-end gap-1">Engagement {sortConfig.key === 'engagement' ? (sortConfig.direction === 'desc' ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50" />}</div>
+              </th>
+              
+              <th 
+                className="px-4 py-4 cursor-pointer hover:text-white transition-colors group text-right"
+                onClick={() => handleSort('trending')}
+              >
+                <div className="flex items-center justify-end gap-1">Trending {sortConfig.key === 'trending' ? (sortConfig.direction === 'desc' ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50" />}</div>
+              </th>
+              
+              <th 
+                className="px-4 py-4 cursor-pointer hover:text-white transition-colors group text-right"
+                onClick={() => handleSort('published')}
+              >
+                <div className="flex items-center justify-end gap-1">Published {sortConfig.key === 'published' ? (sortConfig.direction === 'desc' ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50" />}</div>
+              </th>
+              
+              <th className="px-4 py-4 text-right">Watch</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-white/5">
             {loading
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i}>
-                    <td>
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <span className="app-thumb" />
-                        <span className="app-skel" style={{ width: 220, height: 14 }} />
+              ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+              : pageVideos.map((video, index) => (
+                  <tr key={video.id} className="hover:bg-white/5 transition-colors group border-b border-white/5">
+                    <td className="px-4 py-4 text-sm font-medium text-zinc-500">{start + index + 1}</td>
+                    <td className="px-4 py-4">
+                      <div className="w-16 h-10 sm:w-24 sm:h-14 bg-zinc-800 rounded-md overflow-hidden relative">
+                        <Thumbnail src={video.thumbnailUrl} />
                       </div>
                     </td>
-                    {COLUMNS.map(c => (
-                      <td key={c.key} className="num"><span className="app-skel" style={{ width: 44, height: 14 }} /></td>
-                    ))}
-                  </tr>
-                ))
-              : sorted.map(v => (
-                  <tr key={v.id}>
-                    <td>
-                      <a href={v.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
-                        <VideoThumb video={v} />
-                        <span style={{ minWidth: 0 }}>
-                          <span style={{ display: 'block', fontWeight: 500 }} className="app-clip">{v.title}</span>
-                          <span className="app-meta num">{clock(v.duration)}</span>
-                        </span>
+                    <td className="px-4 py-4">
+                      <p className="text-sm font-semibold text-white line-clamp-2 max-w-sm">{video.title}</p>
+                    </td>
+                    <td className="px-4 py-4 text-sm font-semibold text-white text-right">{formatNumber(video.views)}</td>
+                    <td className="px-4 py-4 text-sm text-zinc-300 text-right">{formatNumber(video.likes)}</td>
+                    <td className="px-4 py-4 text-sm text-zinc-300 hidden sm:table-cell text-right">{formatNumber(video.comments)}</td>
+                    <td className="px-4 py-4 text-right">
+                      <EngagementBadge rate={`${video.engagementRate.toFixed(2)}%`} />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex justify-end"><TrendingDot score={video.trendingScore} /></div>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-zinc-400 whitespace-nowrap text-right">{formatDate(video.publishedAt)}</td>
+                    <td className="px-4 py-4 text-right">
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Watch ${video.title} on YouTube`}
+                        className="p-2 text-zinc-500 hover:text-white focus-visible:text-white transition-colors rounded-md hover:bg-white/10 inline-block"
+                      >
+                        <ExternalLink className="w-4 h-4" />
                       </a>
                     </td>
-                    <td className="num" style={{ fontWeight: 600 }}>{formatNumber(v.views)}</td>
-                    <td className="num">{formatNumber(v.likes)}</td>
-                    <td className="num">{formatNumber(v.comments)}</td>
-                    <td className="num">{v.engagementRate.toFixed(2)}%</td>
-                    <td className="num">
-                      <span className="app-dot" style={{ background: trendingColour(v.trendingScore) }} aria-hidden="true" />
-                      {v.trendingScore}
-                    </td>
-                    <td className="num" style={{ whiteSpace: 'nowrap', color: 'var(--app-muted)' }}>{formatDate(v.publishedAt)}</td>
                   </tr>
                 ))}
           </tbody>
         </table>
       </div>
-      {/* Phone: two-line rows. Identity and views on line 1, every other field on line 2 */}
-      {!loading && (
-        <ol className="app-list app-phone-list">
-          {sorted.map(v => (
-            <li key={v.id}>
-              <a href={v.url} target="_blank" rel="noopener noreferrer" className="app-media-row">
-                <VideoThumb video={v} />
-                <span style={{ minWidth: 0 }}>
-                  <span className="app-clip" style={{ display: 'block', fontWeight: 500 }}>{v.title}</span>
-                  <span className="app-meta num" style={{ display: 'block' }}>
-                    {formatNumber(v.likes)} likes · {formatNumber(v.comments)} comments · {v.engagementRate.toFixed(2)}%
-                  </span>
-                  <span className="app-meta num" style={{ display: 'block' }}>
-                    <span className="app-dot" style={{ background: trendingColour(v.trendingScore) }} aria-hidden="true" />
-                    Trending {v.trendingScore} · {formatDate(v.publishedAt)}
-                  </span>
-                </span>
-                <span className="num" style={{ fontWeight: 600, alignSelf: 'start' }}>{formatNumber(v.views)}</span>
-              </a>
-            </li>
-          ))}
-        </ol>
-      )}
-      {!loading && videos.length === 0 && <p className="app-empty" style={{ marginTop: 8 }}>No uploads in this range.</p>}
-    </section>
+
+      {/* Footer: count + pagination */}
+      <div className="px-4 py-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between bg-[#0A0A0A] gap-4 flex-wrap">
+        <p className="text-sm text-zinc-500">
+          Showing{' '}
+          <span className="font-semibold text-white">{videos.length > 0 ? start + 1 : 0}–{end}</span>
+          {' '}of{' '}
+          <span className="font-semibold text-white">{videos.length}</span> video{videos.length !== 1 ? 's' : ''}
+        </p>
+
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm text-zinc-400 tabular-nums">
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
+

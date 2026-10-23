@@ -1,35 +1,23 @@
-import ChapterHeader from '@/components/landing/ChapterHeader';
-import Hero from '@/components/landing/Hero';
-import BriefShowcase from '@/components/landing/BriefShowcase';
-import ScoreLab from '@/components/landing/ScoreLab';
-import HowItRuns from '@/components/landing/HowItRuns';
-import Pricing from '@/components/landing/Pricing';
-import Faq from '@/components/landing/Faq';
-import StartCta from '@/components/landing/StartCta';
-import SiteFooter from '@/components/landing/SiteFooter';
-import LandingMotion from '@/components/landing/LandingMotion';
-import { buildSampleBrief } from '@/lib/sampleBrief';
+import Navbar from '@/components/Navbar';
+import HeroSection from '@/components/HeroSection';
+import FeaturesSection from '@/components/FeaturesSection';
+import HowItWorks from '@/components/HowItWorks';
+import SocialProofSection from '@/components/SocialProofSection';
+import PricingSection from '@/components/PricingSection';
+import Footer from '@/components/Footer';
 
-// The page is a brief on one competitor: each chapter is one of its answers.
 export default function LandingPage() {
-  const brief = buildSampleBrief();
-
   return (
-    <div className="lp">
-      {/* Gate the entrances before first paint, so nothing flashes or stays hidden without script */}
-      <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
-      <ChapterHeader />
+    <div className="min-h-screen bg-black text-white font-sans">
+      <Navbar />
       <main>
-        <Hero />
-        <BriefShowcase brief={brief} />
-        <ScoreLab avgViews={brief.avgViews} asOf={brief.asOf} />
-        <HowItRuns brief={brief} />
-        <Pricing />
-        <Faq />
-        <StartCta />
+        <HeroSection />
+        <FeaturesSection />
+        <HowItWorks />
+        <SocialProofSection />
+        <PricingSection />
       </main>
-      <SiteFooter />
-      <LandingMotion />
+      <Footer />
     </div>
   );
 }

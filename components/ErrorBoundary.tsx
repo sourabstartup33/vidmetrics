@@ -34,20 +34,27 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="app" style={{ display: 'grid', placeItems: 'center', padding: 24 }}>
-          <div className="app-error" role="alert" style={{ maxWidth: 520, justifyContent: 'space-between', flexWrap: 'wrap', background: 'var(--app-sheet)' }}>
-            <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <AlertCircle className="w-4 h-4" aria-hidden="true" />
-              <span>{this.props.fallbackMessage || 'Something went wrong on this screen.'}</span>
-            </span>
-            <button type="button" onClick={this.handleRetry} className="app-button app-button--text">
-              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
-              Try again
-            </button>
+        <div className="min-h-[400px] flex flex-col items-center justify-center gap-4 p-8 text-center">
+          <div className="p-3 rounded-full bg-red-500/10">
+            <AlertCircle className="w-8 h-8 text-red-400" />
           </div>
+          <div>
+            <h2 className="text-lg font-bold text-white mb-1">Something went wrong</h2>
+            <p className="text-sm text-zinc-400 max-w-md">
+              {this.props.fallbackMessage || 'An unexpected error occurred. Please try again.'}
+            </p>
+          </div>
+          <button
+            onClick={this.handleRetry}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try Again
+          </button>
         </div>
       );
     }
+
     return this.props.children;
   }
 }

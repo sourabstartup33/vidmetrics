@@ -1,26 +1,12 @@
 import type { Metadata } from 'next';
-import { Libre_Franklin, Source_Serif_4 } from 'next/font/google';
 import './globals.css';
-
-const franklin = Libre_Franklin({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-franklin',
-  display: 'swap',
-});
-
-const serif = Source_Serif_4({
-  subsets: ['latin'],
-  weight: ['400', '600'],
-  variable: '--font-source-serif',
-  display: 'swap',
-});
+import SmoothScroll from '@/components/SmoothScroll';
 
 export const metadata: Metadata = {
-  title: 'VidMetrics: competitor briefs for YouTube',
+  title: 'VidMetrics — Competitor Intelligence',
   description:
-    'Paste any YouTube channel. VidMetrics reads its latest uploads and writes a brief: what wins, when they post and where they are open.',
-  keywords: ['YouTube analytics', 'competitor analysis', 'YouTube competitor research', 'video metrics'],
+    'Track competitors, surface viral trends, and make data-driven decisions. The ultimate YouTube analytics platform for enterprise content teams.',
+  keywords: ['YouTube analytics', 'competitor tracking', 'video metrics', 'trending detection'],
   icons: {
     icon: '/favicon.svg',
   },
@@ -32,8 +18,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${franklin.variable} ${serif.variable}`} suppressHydrationWarning>
-      <body>{children}</body>
+    <html lang="en">
+      <body>
+        <SmoothScroll />
+        {children}
+      </body>
     </html>
   );
 }
