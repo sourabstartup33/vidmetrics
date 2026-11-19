@@ -211,5 +211,7 @@ cat <<EOF
   SSH in:      $SSH
   App logs:    $SSH 'pm2 logs vidmetrics'
   Update app:  $SSH 'cd vidmetrics && git pull && npm ci && npm run build && pm2 restart vidmetrics'
+  Free HTTPS:  point your domain's A record at $IP, then run  bash https.sh
+               (download it next to setup.sh; see deploy/oracle/https.sh)
 
 EOF
